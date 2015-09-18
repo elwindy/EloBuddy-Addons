@@ -8,6 +8,8 @@ using EloBuddy.SDK.Enumerations;
 using EloBuddy.SDK.Events;
 using EloBuddy.SDK.Menu;
 using EloBuddy.SDK.Menu.Values;
+using RyzeBuddy.Activator;
+using Item = RyzeBuddy.Activator.Item;
 
 #endregion
 
@@ -44,7 +46,8 @@ namespace RyzeBuddy
             if(_Player.ChampionName != ChampionName) {return;}
 
             Bootstrap.Init(null);
-
+            Hacks.AntiAFK = true;
+            ItemManager.Init();
             menu = MainMenu.AddMenu("Ryze Buddy", "ryzeBuddy");
             menu.AddGroupLabel("Ryze Buddy");
             menu.AddLabel("made by the elwindy");
