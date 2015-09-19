@@ -105,6 +105,7 @@ namespace ThreshBuddy
             flayMenu.Add("EGapcloser", new CheckBox("E on Incoming Gapcloser"));
             flayMenu.AddSeparator();
             hookMenu = menu.AddSubMenu("Hook", "Hook");
+            hookMenu.Add("QDash", new CheckBox("Q on Dash (Smart)"));
             hookMenu.Add("QInterrupt", new CheckBox("Q to Interrupt"));
             hookMenu.Add("QImmobile", new CheckBox("Q on Immobile"));
             hookMenu.AddSeparator();
@@ -227,9 +228,22 @@ namespace ThreshBuddy
             {
                 return;
             }
+            if (Q.IsReady() && !E.IsInRange(sender) && hookMenu["QDash"].Cast<CheckBox>().CurrentValue)
+            {
+                var endPosition = args.Path.Last();
 
+                var prediction = Q.GetPrediction(sender);
 
-            if (E.IsReady() && E.IsInRange(sender) && flayMenu["EDash"].Cast<CheckBox>().CurrentValue)
+                if (prediction.HitChance != HitChance.High)
+                {
+                    return;
+                }
+
+                Q.Cast(endPosition);
+                
+            }
+
+            else if (E.IsReady() && E.IsInRange(sender) && flayMenu["EDash"].Cast<CheckBox>().CurrentValue)
             {
                 var endPosition = args.Path.Last();
                 var isFleeing = endPosition.Distance(Player.ServerPosition) > Player.Distance(sender);
@@ -293,7 +307,8 @@ namespace ThreshBuddy
 
             if (Q.IsReady())
             {
-                if (useQ1 && !target.HasBuff("ThreshQ"))
+                var pred = Q.GetPrediction(target);
+                if (useQ1 && !target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High)
                 {
                     Q.Cast(target);
                 }
@@ -349,11 +364,12 @@ namespace ThreshBuddy
 
             if (useQ && Q.IsReady())
             {
+                var pred = Q.GetPrediction(target);
                 if (target.HasBuff("ThreshQ"))
                 {
                     Q2.Cast();
                 }
-                else if (!target.HasBuff("ThreshQ"))
+                else if (!target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High)
                 {
                     Q.Cast(target);
                 }
