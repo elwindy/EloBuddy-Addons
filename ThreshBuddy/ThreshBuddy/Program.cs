@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using EloBuddy;
 using EloBuddy.SDK;
 using EloBuddy.SDK.Enumerations;
@@ -48,7 +47,8 @@ namespace ThreshBuddy
         public static Menu flayMenu;
 
         public static Menu hookMenu;
-        /// <summary>
+
+        /// <summary>
         /// The main.
         /// </summary>
         /// <param name="args">
@@ -115,7 +115,7 @@ namespace ThreshBuddy
             Game.OnTick += Game_OnTick;
             Obj_AI_Base.OnNewPath += Obj_AI_Base_OnNewPath;
             Interrupter.OnInterruptableSpell += Interrupter_OnInterruptableSpell;
-            Gapcloser.OnGapCloser += Gapcloser_OnGapCloser;
+            Gapcloser.OnGapcloser += Gapcloser_OnGapCloser;
         }
 
         /// <summary>
@@ -128,7 +128,7 @@ namespace ThreshBuddy
         /// The e.
         /// </param>
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
-        private static void Gapcloser_OnGapCloser(AIHeroClient sender, Gapcloser.GapCloserEventArgs e)
+        private static void Gapcloser_OnGapCloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
         {
             if (!e.Sender.IsValidTarget() || !flayMenu["EGapcloser"].Cast<CheckBox>().CurrentValue)
             {
@@ -148,7 +148,7 @@ namespace ThreshBuddy
         /// The e.
         /// </param>
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
-        private static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, InterruptableSpellEventArgs e)
+        private static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
         {
             if (!sender.IsValidTarget(Q.Range) || e.DangerLevel != DangerLevel.High)
             {
