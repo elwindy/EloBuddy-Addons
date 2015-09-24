@@ -52,6 +52,15 @@ namespace KurisuDarius_
                     {
                         SpellManager.W.Cast();
                     }
+
+                    if (Item.CanUseItem(3077) ||
+                        Item.CanUseItem(3074) ||
+                        Item.CanUseItem(3748))
+                    {
+                        Item.UseItem(3074);
+                        Item.UseItem(3077);
+                        Item.CanUseItem(3748);
+                    }
                 }
             }
         }
