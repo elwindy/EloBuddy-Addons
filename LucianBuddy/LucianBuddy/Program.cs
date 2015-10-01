@@ -13,7 +13,7 @@ using EloBuddy.SDK.Menu.Values;
 
 namespace LucianBuddy
 {
-    
+
 
     class Program
     {
@@ -34,7 +34,7 @@ namespace LucianBuddy
         private static bool passRdy = false;
         private static float castR = Game.Time;
 
-        public static Menu main, configs, harass, farm, misc;
+        public static Menu main, configs, harass,  misc;
 
 
         static void Main(string[] args)
@@ -69,8 +69,6 @@ namespace LucianBuddy
             configs.AddSeparator(15);
             configs.AddLabel("E Config");
             configs.Add("autoE", new CheckBox("Auto E"));
-            configs.Add("nktdE", new CheckBox("NoKeyToDash"));
-            configs.Add("slowE", new CheckBox("Auto SlowBuff E"));
             configs.AddSeparator(15);
             configs.AddLabel("R Config");
             configs.Add("autoR", new CheckBox("Auto R"));
@@ -92,11 +90,6 @@ namespace LucianBuddy
                 ObjectManager.Player.SetSkin(ObjectManager.Player.ChampionName, changeArgs.NewValue);
             };
 
-            farm = main.AddSubMenu("Farm", "farm");
-            farm.AddGroupLabel("Farm Settings");
-            farm.Add("farmQ", new CheckBox("LaneClear + jungle Q"));
-            farm.Add("farmW", new CheckBox("LaneClear + jungle W"));
-            farm.Add("Mana", new Slider("LaneClear + jungle  Mana", 80));
 
             Game.OnTick += Game_OnTick;
             Gapcloser.OnGapcloser += Gapcloser_OnGapcloser;
@@ -141,18 +134,6 @@ namespace LucianBuddy
             }
         }
 
-        private static double NumShots()
-        {
-            double num = 7.5;
-            if (R.Level == 1)
-                num += 7.5 * Player.AttackSpeedMod * 0.5;
-            else if (R.Level == 2)
-                num += 9 * Player.AttackSpeedMod * 0.5;
-            else if (R.Level == 3)
-                num += 10.5 * Player.AttackSpeedMod * 0.5;
-            return num;
-        }
-
         private static double AaDamage(AIHeroClient target)
         {
             if (Player.Level > 12)
@@ -182,102 +163,28 @@ namespace LucianBuddy
                 }
             }
             SetMana();
-            if (Q.IsReady() && !passRdy && !SpellLock)
-            {
-                LogicQ();
-            }
-            if (W.IsReady() && !passRdy && !SpellLock && configs["autoW"].Cast<CheckBox>().CurrentValue)
-            {
-                LogicW();
-            }
-            if (E.IsReady())
-            {
-                LogicE();
-            }
-            if (R.IsReady() && Game.Time - castR > 5 && configs["autoR"].Cast<CheckBox>().CurrentValue)
-            {
-                LogicR();
-            }
-
-            if (!passRdy && !SpellLock)
-            {
-                farmmode();
-            }
+            LogicQ();
+            LogicW();
+            LogicE();
+            LogicR();
             
 
+            
+
+
         }
 
-        private static void farmmode()
+        private static double GetRDmg(AIHeroClient target)
         {
-            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear) || Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.JungleClear))
-            {
-                var mobs = EntityManager.GetJungleMonsters(Player.Position.To2D(), Q.Range);
-                if (mobs.Count > 0 && Player.Mana > RMANA + WMANA + EMANA + QMANA)
-                {
-                    var mob = mobs[0];
-                    if (Q.IsReady() && farm["farmQ"].Cast<CheckBox>().CurrentValue)
-                    {
-                        Q.Cast(mob);
-                        return;
-                    }
-
-                    if (W.IsReady() && farm["farmW"].Cast<CheckBox>().CurrentValue)
-                    {
-                        W.Cast(mob);
-                        return;
-                    }
-                }
-
-                if (Player.ManaPercent > farm["Mana"].Cast<Slider>().CurrentValue)
-                {
-                    var minions = EntityManager.GetLaneMinions(
-                        EntityManager.UnitTeam.Enemy,
-                        Player.Position.To2D(),
-                        Q1.Range);
-                    if (Q.IsReady() && farm["farmQ"].Cast<CheckBox>().CurrentValue)
-                    {
-                        foreach (var minion in minions)
-                        {
-                            var poutput = Q1.GetPrediction(minion);
-                            var col = poutput.CollisionObjects;
-
-                            if (col.Count() > 2)
-                            {
-                                var minionQ = col.First();
-                                if (minionQ.IsValidTarget(Q.Range))
-                                {
-                                    Q.Cast(minion);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    if (W.IsReady() && farm["farmW"].Cast<CheckBox>().CurrentValue)
-                    {
-                        var Wminions = EntityManager.GetLaneMinions(
-                        EntityManager.UnitTeam.Enemy,
-                        Player.Position.To2D(),
-                        W.Range);
-                        foreach (var minion in minions)
-                        {
-                            var poutput = W.GetPrediction(minion);
-                            var col = poutput.CollisionObjects;
-
-                            if (col.Count() > 3)
-                            {
-                                var minionW = col.First();
-                                if (minionW.IsValidTarget(W.Range))
-                                {
-                                    W.Cast(minion);
-                                    return;
-                                }
-                            }
-                        }
-                        
-                    }
-                }
-            }
+            var shot = (int)(7.5 + new[] { 7.5, 7.5, 9, 10.5 }[R.Level] * 1 / Player.AttackDelay);
+            var maxShot = new[] { 26, 26, 30, 33 }[R.Level];
+            return Player.CalculateDamageOnUnit(
+                target, DamageType.Physical, (float)
+                (new[] { 40, 40, 50, 60 }[R.Level] + 0.25 * Player.FlatPhysicalDamageMod + (float)
+                 0.1 * Player.FlatMagicDamageMod) * (shot > maxShot ? maxShot : shot));
         }
+
+        
 
         private static void LogicQ()
         {
@@ -306,7 +213,7 @@ namespace LucianBuddy
                     return;
                 if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear) && Player.Mana < RMANA + QMANA + EMANA + WMANA)
                     return;
-                
+
                 var prepos = Q1.GetPrediction(t1);
                 if ((int)prepos.HitChance < 3)
                     return;
@@ -383,24 +290,27 @@ namespace LucianBuddy
         private static void LogicR()
         {
             var t = TargetSelector.GetTarget(R.Range, DamageType.Physical);
-
-            if (t.IsValidTarget(R.Range) && t.CountEnemiesInRange(500) == 0 && !Player.IsInAutoAttackRange(t))
+            var rDmg = GetRDmg(t);
+            if (rDmg >= t.Health * 0.7 && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo))
             {
-                var rDmg = Player.GetSpellDamage(t, SpellSlot.R) * NumShots();
+                if (Item.CanUseItem((int)ItemId.Youmuus_Ghostblade))
+                {
+                    Item.UseItem((int)ItemId.Youmuus_Ghostblade);
+                }
+            }
 
-                var tDis = Player.Distance(t.ServerPosition);
-                if (rDmg * 0.8 > t.Health && tDis < 800 && !Q.IsReady())
+            if (configs["autoR"].Cast<CheckBox>().CurrentValue && R.IsReady() && t.IsValidTarget(R.Range) && !Player.HasBuff("LucianR") && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo) && R.GetPrediction(t).HitChance >= HitChance.Medium)
+            {
+                Chat.Print(rDmg);
+                if (rDmg >= t.Health * 0.7)
+                {
+                    if (Item.CanUseItem((int)ItemId.Youmuus_Ghostblade))
+                    {
+                        Item.UseItem((int)ItemId.Youmuus_Ghostblade);
+                    }
                     R.Cast(t);
-                else if (rDmg * 0.7 > t.Health && tDis < 900)
-                    R.Cast(t);
-                else if (rDmg * 0.6 > t.Health && tDis < 1000)
-                    R.Cast(t);
-                else if (rDmg * 0.5 > t.Health && tDis < 1100)
-                    R.Cast(t);
-                else if (rDmg * 0.4 > t.Health && tDis < 1200)
-                    R.Cast(t);
-                else if (rDmg * 0.3 > t.Health && tDis < 1300)
-                    R.Cast(t);
+                    
+                }
                 return;
             }
         }
@@ -413,40 +323,24 @@ namespace LucianBuddy
         private static void LogicE()
         {
 
-            var dashPosition = Player.Position.Extend(Game.CursorPos, E.Range);
-            if (IsWall(dashPosition) || dashPosition.CountEnemiesInRange(800) > 2)
-                return;
-            if (Game.CursorPos.Distance(Player.Position) > Player.AttackRange + Player.BoundingRadius * 2 && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo) && configs["nktdE"].Cast<CheckBox>().CurrentValue && Player.Mana > RMANA + EMANA - 10)
-            {
-                if (!passRdy && !SpellLock)
-                    E.Cast(Game.CursorPos);
-                else if (!Orbwalker.GetTarget().IsValidTarget())
-                    E.Cast(Game.CursorPos);
-            }
+            var target = TargetSelector.GetTarget(Player.GetAutoAttackRange() - 30, DamageType.Physical);
+            if (configs["autoE"].Cast<CheckBox>().CurrentValue && target.IsValidTarget(270) && target.IsMelee && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo))
+                E.Cast((Vector3)Player.ServerPosition.Extend(target.ServerPosition, -E.Range));
 
-            if (Player.Mana < RMANA + EMANA || !configs["autoE"].Cast<CheckBox>().CurrentValue || passRdy || SpellLock)
-                return;
-
-            foreach (var target in HeroManager.Enemies.Where(target => target.IsValidTarget(270) && target.IsMelee))
+            else if (configs["autoE"].Cast<CheckBox>().CurrentValue &&  Player.IsInAutoAttackRange(target) && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo))
             {
-                if (target.Position.Distance(Game.CursorPos) > target.Position.Distance(Player.Position))
-                {
-                    E.Cast(dashPosition.To3D());
-                }
-            }
-
-            if (configs["slowE"].Cast<CheckBox>().CurrentValue && Player.HasBuffOfType(BuffType.Slow))
-            {
-                E.Cast(dashPosition.To3D());
+                E.Cast((Vector3)Player.ServerPosition.Extend(target.ServerPosition, E.Range));
             }
         }
 
         static void Orbwalker_OnPostAttack(AttackableUnit target, EventArgs args)
         {
-            if (!target.IsMe)
+            if (target.IsMe)
             {
                 return;
             }
+                      
+            
         }
 
         static void Obj_AI_Base_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
