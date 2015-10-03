@@ -11,6 +11,8 @@ namespace ThreshBuddy
     using System.Diagnostics.CodeAnalysis;
     using System.Linq;
 
+    using EloBuddy.SDK.Rendering;
+
     using SharpDX;
 
     /// <summary>
@@ -48,6 +50,8 @@ namespace ThreshBuddy
 
         public static Menu hookMenu;
 
+        public static Menu drawMenu;
+
         /// <summary>
         /// The main.
         /// </summary>
@@ -83,6 +87,8 @@ namespace ThreshBuddy
             menu.AddGroupLabel("ThreshBuddy");
             menu.AddLabel("made by the Heluder");
             menu.AddSeparator();
+            drawMenu = menu.AddSubMenu("Draw", "drawThresh");
+            drawMenu.Add("drawq", new CheckBox("Draw Q"));
             ComboMenu = menu.AddSubMenu("Combo", "ComboThresh");
             ComboMenu.Add("UseQCombo", new CheckBox("Use Q"));
             ComboMenu.Add("UseWCombo", new CheckBox("Use W"));
@@ -116,6 +122,48 @@ namespace ThreshBuddy
             Obj_AI_Base.OnNewPath += Obj_AI_Base_OnNewPath;
             Interrupter.OnInterruptableSpell += Interrupter_OnInterruptableSpell;
             Gapcloser.OnGapcloser += Gapcloser_OnGapCloser;
+            AIHeroClient.OnProcessSpellCast += AIHeroClient_OnProcessSpellCast;
+            Drawing.OnDraw += Drawing_OnDraw;
+        }
+
+        static void Drawing_OnDraw(EventArgs args)
+        {
+            if (drawMenu["drawq"].Cast<CheckBox>().CurrentValue) Circle.Draw(new ColorBGRA(Color.GreenYellow.ToBgra()), Q.Range, Player.Position);
+        }
+
+        static void AIHeroClient_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
+        {
+            
+            if (sender.IsAlly) return;
+            // flash
+            if(args.SData.Name == "summonerflash")
+            {
+                var pred = Q.GetPrediction(sender);
+                if (pred.HitChance >= HitChance.Medium && !pred.CollisionObjects.Any())
+                {
+                    Q.Cast(args.End);
+                }
+            }
+                // ezreal e
+            else if (args.SData.Name == "EzrealArcaneShift")
+            {
+                var pred = Q.GetPrediction(sender);
+                if (pred.HitChance >= HitChance.Medium && !pred.CollisionObjects.Any())
+                {
+                    Q.Cast(args.End);
+                }
+            }
+                //shaco q
+            else if (args.SData.Name == "Deceive")
+            {
+                var pred = Q.GetPrediction(sender);
+                if (pred.HitChance >= HitChance.Medium && !pred.CollisionObjects.Any())
+                {
+                    Q.Cast(args.End);
+                }
+            }
+            
+            
         }
 
         /// <summary>
@@ -130,7 +178,7 @@ namespace ThreshBuddy
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
         private static void Gapcloser_OnGapCloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
         {
-            if (!e.Sender.IsValidTarget() || !flayMenu["EGapcloser"].Cast<CheckBox>().CurrentValue)
+            if (!e.Sender.IsValidTarget() || !flayMenu["EGapcloser"].Cast<CheckBox>().CurrentValue || sender.IsAlly)
             {
                 return;
             }
@@ -150,7 +198,7 @@ namespace ThreshBuddy
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
         private static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
         {
-            if (!sender.IsValidTarget(Q.Range) || e.DangerLevel != DangerLevel.High)
+            if (!sender.IsValidTarget(Q.Range) || e.DangerLevel != DangerLevel.High || sender.IsAlly)
             {
                 return;
             }
@@ -224,7 +272,7 @@ namespace ThreshBuddy
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
         private static void Obj_AI_Base_OnNewPath(Obj_AI_Base sender, GameObjectNewPathEventArgs args)
         {
-            if (!sender.IsValid() || !args.IsDash || !sender.IsValidTarget(Q.Range))
+            if (!sender.IsValid() || !args.IsDash || !sender.IsValidTarget(Q.Range) || sender.IsAlly || !sender.IsMinion)
             {
                 return;
             }
@@ -234,7 +282,7 @@ namespace ThreshBuddy
 
                 var prediction = Q.GetPrediction(sender);
 
-                if (prediction.HitChance != HitChance.High)
+                if (prediction.HitChance != HitChance.High && prediction.CollisionObjects.Any())
                 {
                     return;
                 }
@@ -287,6 +335,7 @@ namespace ThreshBuddy
             {
                 Harass();
             }
+            
         }
 
         /// <summary>
@@ -308,9 +357,14 @@ namespace ThreshBuddy
             if (Q.IsReady())
             {
                 var pred = Q.GetPrediction(target);
-                if (useQ1 && !target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High)
+                if (useQ1 && !target.HasBuff("ThreshQ") && pred.HitChance == HitChance.Medium && !pred.CollisionObjects.Any())
                 {
-                    Q.Cast(target);
+                    Q.Cast(pred.CastPosition);
+                }
+                else if (useQ1 &&!target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High && !target.IsMoving
+                        && !pred.CollisionObjects.Any())
+                {
+                    Q.Cast(pred.UnitPosition);
                 }
 
                 if (useQ2 && target.HasBuff("ThreshQ"))
@@ -319,7 +373,7 @@ namespace ThreshBuddy
                 }
             }
 
-            if (useE && E.IsReady() && !target.HasBuff("ThreshQ"))
+            if (useE && E.IsReady() || !target.HasBuff("ThreshQ"))
             {
                 var isFleeing = Player.Distance(target) < target.Distance(Game.CursorPos);
                 var prediction = E.GetPrediction(target);
@@ -359,8 +413,7 @@ namespace ThreshBuddy
             var useQ = ComboMenu["UseQCombo"].Cast<CheckBox>().CurrentValue;
             var useW = ComboMenu["UseWCombo"].Cast<CheckBox>().CurrentValue;
             var useE = ComboMenu["UseECombo"].Cast<CheckBox>().CurrentValue;
-            var useR = ComboMenu["UseRCombo"].Cast<CheckBox>().CurrentValue;
-            var ultEnemies = ComboMenu["UseRComboEnemies"].Cast<Slider>().CurrentValue;
+            
 
             if (useQ && Q.IsReady())
             {
@@ -369,9 +422,9 @@ namespace ThreshBuddy
                 {
                     Q2.Cast();
                 }
-                else if (!target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High)
+                else if (!target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High && !pred.CollisionObjects.Any())
                 {
-                    Q.Cast(target);
+                    Q.Cast(pred.CastPosition);
                 }
             }
 
@@ -391,7 +444,7 @@ namespace ThreshBuddy
                 }
             }
 
-            if (useE && E.IsReady() && !target.HasBuff("ThreshQ"))
+            if (useE && E.IsReady() || !target.HasBuff("ThreshQ"))
             {
                 var isFleeing = Player.Distance(target) < target.Distance(Game.CursorPos);
                 var prediction = E.GetPrediction(target);
@@ -412,11 +465,13 @@ namespace ThreshBuddy
                             : vector);
                 }
             }
-
-            if (useR && R.IsReady() && Player.CountEnemiesInRange(R.Range) >= ultEnemies)
+            var useR = ComboMenu["UseRCombo"].Cast<CheckBox>().CurrentValue;
+            var ultEnemies = ComboMenu["UseRComboEnemies"].Cast<Slider>().CurrentValue;
+            if (target.IsValidTarget(R.Range) && useR && R.IsReady() && Player.CountEnemiesInRange(R.Range) >= ultEnemies)
             {
                 R.Cast();
             }
+            
         }
     }
 }
