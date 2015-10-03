@@ -14,6 +14,7 @@ using SpellData = Annie___The_Little_Girl.DamageIndicator.SpellData;
 
 namespace Annie___The_Little_Girl
 {
+    using EloBuddy.SDK.Constants;
     using EloBuddy.SDK.Events;
     using EloBuddy.SDK.Menu;
     using EloBuddy.SDK.Menu.Values;
@@ -30,13 +31,11 @@ namespace Annie___The_Little_Girl
 
         public static Spell.Active E;
 
-        public static float QMANA = 0, WMANA = 0, EMANA = 0, RMANA = 0;
-
         public static GameObject Tibbers;
 
-        public static float TibbersTimer = 0;
-
         public static Menu AllInOne;
+
+        public static List<Obj_AI_Turret> Turrets = new List<Obj_AI_Turret>();
 
         static void Main(string[] args)
         {
@@ -51,28 +50,40 @@ namespace Annie___The_Little_Girl
             }
 
             Q = new Spell.Targeted(SpellSlot.Q, (uint)625f);
-            W = new Spell.Skillshot(SpellSlot.W, (uint)600f, SkillShotType.Circular, (int)0.50f, 3000, (int)250f);
+            W = new Spell.Skillshot(SpellSlot.W, (uint)600f, SkillShotType.Cone, (int)0.50f, 3000, (int)250f);
             E = new Spell.Active(SpellSlot.E);
             R = new Spell.Skillshot(SpellSlot.R, (uint)625f, SkillShotType.Circular, (int)0.20f, int.MaxValue, (int)250f);
-
             AllInOne = MainMenu.AddMenu("Annie", "Annie");
             AllInOne.AddGroupLabel("Annie - The Little Girl");
-            AllInOne.AddLabel("Farm");
-            AllInOne.Add("farmQ", new CheckBox("Farm Q"));
-            AllInOne.Add("farmW", new CheckBox("Farm W", false));
-            AllInOne.Add("Mana", new Slider("LaneClear Mana", 60));
-            AllInOne.AddLabel("R Settings");
-            AllInOne.Add("rCount", new Slider("Auto R stun x enemies", 3, 0, 5));
-            AllInOne.AddLabel("Stun in combo", 15);
-            foreach (var enemy in ObjectManager.Get<AIHeroClient>().Where(enemy => enemy.Team != Player.Team))
-            {
-                AllInOne.Add("stun" + enemy.ChampionName, new CheckBox(enemy.ChampionName));
-            }
-            AllInOne.AddLabel("Other Settings");
-            AllInOne.Add("autoE", new CheckBox("Auto E stack stun", false));
-            AllInOne.Add("sup", new CheckBox("Support mode", false));
-            AllInOne.Add("tibers", new CheckBox("TibbersAutoPilot"));
-            AllInOne.Add("AACombo", new CheckBox("AA in combo", false));
+            AllInOne.AddLabel("Combo");
+            AllInOne.Add("useqcombo", new CheckBox("Use [Q]"));
+            AllInOne.Add("usewcombo", new CheckBox("Use [W]"));
+            AllInOne.Add("useecombo", new CheckBox("Use [E]"));
+            AllInOne.Add("usercombo", new CheckBox("Use [R]"));
+            AllInOne.Add("usersmart", new CheckBox("Smart [R] 1v1 Logic"));
+            AllInOne.Add("userhit", new Slider("R If Hit X Enemies", 3, 1, 5));
+            AllInOne.AddLabel("Passive Settings");
+            AllInOne.Add("ebefore", new CheckBox("Use E Before Q To Gain Stun"));
+            AllInOne.Add("estack", new CheckBox("Use E To Stack Stun", false));
+            AllInOne.Add("wstack", new CheckBox("Use W To Stack Stun", false));
+            AllInOne.AddLabel("Tibbers Settings");
+            AllInOne.Add("tibbersmove", new CheckBox("TibbersAutoPilot"));
+            AllInOne.AddLabel("Harass Settings");
+            AllInOne.Add("useqharass", new CheckBox("Use [Q]"));
+            AllInOne.Add("usewharass", new CheckBox("Use [W]"));
+            AllInOne.AddLabel("Lane Settings");
+            AllInOne.Add("keepstunlane", new CheckBox("Keep Stun"));
+            AllInOne.Add("useqlane", new CheckBox("Use [Q]"));
+            AllInOne.Add("useqlanelast", new CheckBox("Use [Q] to Last Hit"));
+            AllInOne.Add("usewlane", new Slider("Use [W]", 3, 1, 20));
+            AllInOne.Add("Mana", new Slider("Min Mana >=", 60));
+            AllInOne.AddLabel("Jungle Settings");
+            AllInOne.Add("useqjung", new CheckBox("Use [Q]"));
+            AllInOne.Add("usewjung", new CheckBox("Use [W]"));
+            AllInOne.AddLabel("Last Hit Settings");
+            AllInOne.Add("keepstunlast", new CheckBox("Keep Stun"));
+            AllInOne.Add("useqxlast", new CheckBox("Use [Q] to Last Hit"));
+
             AllInOne.AddLabel("Skin Changer");
             var skinslect = AllInOne.Add("skin+", new Slider("Chance Skin", 0, 0, 9));
             ObjectManager.Player.SetSkin(ObjectManager.Player.ChampionName, skinslect.CurrentValue);
@@ -81,11 +92,275 @@ namespace Annie___The_Little_Girl
                 ObjectManager.Player.SetSkin(ObjectManager.Player.ChampionName, changeArgs.NewValue);
             };
 
-            Indicator = new DamageIndicator.DamageIndicator(); // Set It
-            Indicator.Add("Combo", new SpellData(0, DamageType.True, Color.Aqua)); // Add the variables.
+            Indicator = new DamageIndicator.DamageIndicator(); 
+            Indicator.Add("Combo", new SpellData(0, DamageType.True, Color.Aqua)); 
+            Chat.Print("Annie - The Little Girl Loaded", Color.White);
+            Obj_AI_Base.OnProcessSpellCast += SpellCast;
             GameObject.OnCreate += GameObject_OnCreate;
-            Game.OnUpdate += Game_OnUpdate;
-            Chat.Print("Annie - The Little Girl Loaded", Color.Brown);
+            Game.OnTick += Game_OnTick;
+
+        }
+
+        static void Game_OnTick(EventArgs args)
+        {
+            Indicator.Update("Combo", new SpellData((int)DamageHandler.ComboDamage(), DamageType.Magical, Color.Aqua));
+            if (Player.HasBuff("Recall"))
+            {
+                return;
+            }
+            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo))
+            {
+                Combo();
+            }
+            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
+            {
+                Harass();
+            }
+            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear))
+            {
+                LaneClear();
+            }
+            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.JungleClear))
+            {
+                JungleClear();
+            }
+            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LastHit))
+            {
+                LastHit();
+            }
+
+            if (AllInOne["tibbersmove"].Cast<CheckBox>().CurrentValue)
+            {
+                Tibbersmove();
+            }
+
+            Stack();
+        }
+
+        private static void LastHit()
+        {
+            var useql = AllInOne["useqxlast"].Cast<CheckBox>().CurrentValue;
+            var usestun = AllInOne["keepstunlast"].Cast<CheckBox>().CurrentValue;
+            if (usestun && Player.HasBuff("pyromania_particle"))
+                return;
+            var minionCount =
+                EntityManager.GetLaneMinions(EntityManager.UnitTeam.Enemy, Player.Position.To2D(), Q.Range)
+                    .FirstOrDefault();
+
+            if (minionCount == null)
+                return;
+
+            var minion = minionCount;
+            var minionhp = minion.Health;
+
+            if (minionhp <= DamageHandler.Q(minion) && useql && Q.IsReady())
+            {
+                Q.Cast(minion);
+            }
+        }
+
+        private static void JungleClear()
+        {
+            var useq = AllInOne["useqjung"].Cast<CheckBox>().CurrentValue;
+            var usew = AllInOne["usewjung"].Cast<CheckBox>().CurrentValue;
+
+            var minionCount = EntityManager.GetJungleMonsters(Player.Position.To2D(), Q.Range).FirstOrDefault();
+
+            if (minionCount == null)
+                return;
+            var minion = minionCount;
+
+            if (useq && Q.IsReady() && minion.IsValidTarget(Q.Range))
+            {
+                Q.Cast(minion);
+            }
+
+            if (usew && W.IsReady() && minion.IsValidTarget(W.Range))
+            {
+                W.Cast(minion);
+            }
+        }
+
+        private static void LaneClear()
+        {
+            var useq = AllInOne["useqlane"].Cast<CheckBox>().CurrentValue;
+            var usestun = AllInOne["keepstunlane"].Cast<CheckBox>().CurrentValue;
+            var useql = AllInOne["useqlanelast"].Cast<CheckBox>().CurrentValue;
+            var usewslider = AllInOne["usewlane"].Cast<Slider>().CurrentValue;
+            var minMana = AllInOne["Mana"].Cast<Slider>().CurrentValue;
+            if (usestun && Player.HasBuff("pyromania_particle"))
+                return;
+            var minionCount =
+                EntityManager.GetLaneMinions(EntityManager.UnitTeam.Enemy, Player.Position.To2D(), Q.Range)
+                    .FirstOrDefault();
+
+            if (minionCount == null)
+                return;
+            var minion = minionCount;
+            var minionhp = minionCount.Health;
+
+
+            if (useql && Q.IsReady() && minion.IsValidTarget(Q.Range) && minionhp <= DamageHandler.Q(minion) && minionhp > Player.GetAutoAttackDamage(minion))
+            {
+                Q.Cast(minion);
+            }
+
+            if (useq && Q.IsReady() && minion.IsValidTarget(Q.Range) && Player.ManaPercent >= minMana)
+            {
+                Q.Cast(minion);
+            }
+
+            var Wfarm = EntityManager.GetLaneMinions(
+                    EntityManager.UnitTeam.Enemy,
+                    Player.Position.To2D(),
+                    W.Range);
+            if (Wfarm == null)
+                return;
+
+
+            if (W.IsReady() && minion.IsValidTarget(W.Range) && Wfarm.Count >= usewslider &&
+                    Player.ManaPercent >= minMana)
+                {
+                    W.Cast(Wfarm.OrderBy(x => x.IsValid()).FirstOrDefault().ServerPosition);
+                }
+            
+        }
+
+        private static void Harass()
+        {
+            var target = TargetSelector.GetTarget(Q.Range, DamageType.Magical);
+            if (target == null)
+                return;
+
+            var useq = AllInOne["useqharass"].Cast<CheckBox>().CurrentValue;
+            var usew = AllInOne["usewharass"].Cast<CheckBox>().CurrentValue;
+
+            if (useq && Q.IsReady() && target.IsValidTarget(Q.Range))
+            {
+                Q.Cast(target);
+            }
+
+            if (usew && W.IsReady() && target.IsValidTarget(W.Range))
+            {
+                W.Cast(target);
+            }
+        }
+
+        private static void Stack()
+        {
+            var usee = AllInOne["estack"].Cast<CheckBox>().CurrentValue;
+            var usew = AllInOne["wstack"].Cast<CheckBox>().CurrentValue;
+
+            if (Player.HasBuff("pyromania_particle"))
+                return;
+
+            if (usee && E.IsReady())
+            {
+                E.Cast();
+            }
+
+            if (usew && W.IsReady())
+            {
+                W.Cast(Game.CursorPos);
+            }
+        }
+
+        private static void Combo()
+        {
+            var target = TargetSelector.GetTarget(Q.Range, DamageType.Magical);
+            if (target == null)
+                return;
+
+            var useq = AllInOne["useqcombo"].Cast<CheckBox>().CurrentValue;
+            var usew = AllInOne["usewcombo"].Cast<CheckBox>().CurrentValue;
+            var usee = AllInOne["useecombo"].Cast<CheckBox>().CurrentValue;
+            var user = AllInOne["usercombo"].Cast<CheckBox>().CurrentValue;
+            var usersmart = AllInOne["usersmart"].Cast<CheckBox>().CurrentValue;
+            var useebefore = AllInOne["ebefore"].Cast<CheckBox>().CurrentValue;
+            var userslider = AllInOne["userhit"].Cast<Slider>().CurrentValue;
+
+
+            if (Q.IsReady() && target.IsValidTarget(Q.Range) && useq)
+            {
+                if (useebefore)
+                {
+                    if (GetPassiveBuff == 3 && E.IsReady() && !Player.HasBuff("summonerteleport"))
+                    {
+                        E.Cast();
+                    }
+
+                    if (!R.IsReady())
+                    {
+                        Q.Cast(target);
+                    }
+                    else
+                    {
+                        if (Player.HasBuff("pyromania_particles") && usersmart)
+                            return;
+                        Q.Cast(target);
+                    }
+                }
+
+                if (!R.IsReady())
+                {
+                    Q.Cast(target);
+                }
+                else
+                {
+                    if (Player.HasBuff("pyromania_particles") && usersmart)
+                        return;
+                    Q.Cast(target);
+                }
+            }
+
+            if (usee && E.IsReady() && !Player.HasBuff("pyromania_particles") && !Player.HasBuff("summonerteleport"))
+            {
+                if (GetPassiveBuff == 3)
+                {
+                    E.Cast();
+                }
+            }
+
+            if (W.IsReady() && target.IsValidTarget(W.Range) && usew && !Player.HasBuff("summonerteleport"))
+            {
+                if (Player.HasBuff("pyromania_particles") && R.IsReady() && usersmart)
+                    return;
+                W.Cast(target);
+            }
+
+            if (R.IsReady()
+                && user && target.IsValidTarget(R.Range) && !Player.HasBuff("summonerteleport") && Player.HasBuff("pyromania_particle"))
+            {
+                foreach (var rhit in
+                        ObjectManager.Get<AIHeroClient>()
+                            .Where(enemy => enemy.IsValidTarget() && userslider >= enemy.CountEnemiesInRange(400))
+                            .Select(x => R.GetPrediction(x))
+                            .Where(pred => pred.HitChance >= HitChance.Medium))
+                {
+                    R.Cast(rhit.CastPosition);
+                }
+                if (target.Health >= DamageHandler.Q(target) + DamageHandler.W(target))
+                {
+                    R.Cast(target.Position);
+                }
+            }
+        }
+
+        public static int GetPassiveBuff
+        {
+            get
+            {
+                var data = Player.Buffs.FirstOrDefault(b => b.DisplayName == "Pyromania");
+                return data != null ? data.Count : 0;
+            }
+        }
+
+        public static Obj_AI_Turret GetTurrets()
+        {
+            var turri =
+                Turrets.OrderBy(x => x.Distance(Tibbers.Position) <= 500 && !x.IsAlly && !x.IsDead)
+                    .FirstOrDefault();
+            return turri;
         }
 
         static void GameObject_OnCreate(GameObject obj, EventArgs args)
@@ -94,177 +369,27 @@ namespace Annie___The_Little_Girl
                 Tibbers = obj;
         }
 
-        private static void Game_OnUpdate(EventArgs args)
+        private static void SpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
-            Indicator.Update("Combo", new SpellData((int)DamageHandler.ComboDamage(), DamageType.Magical, Color.Aqua));
-            if (Player.HasBuff("Recall"))
+            if(!AllInOne["useecombo"].Cast<CheckBox>().CurrentValue) return;
+            if (sender.IsEnemy
+                && sender.Type == Player.Type
+                && args.SData.IsAutoAttack()
+                && args.Target.IsMe)
             {
-                return;
-            }
-
-            var target = TargetSelector.GetTarget(Q.Range, DamageType.Magical);
-            if (target.IsValidTarget()
-                && (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear) || AllInOne["stun" + target.ChampionName].Cast<CheckBox>().CurrentValue || !HaveStun))
-            {
-                if (R.IsReady())
-                {
-                    if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo) && HaveStun && target.CountEnemiesInRange(400) > 1 && DamageHandler.R(target) > target.Health)
-                        R.Cast(target);
-                    else if (HaveStun && AllInOne["rCount"].Cast<Slider>().CurrentValue > 0 && AllInOne["rCount"].Cast<Slider>().CurrentValue >= target.CountEnemiesInRange(300))
-                        R.Cast(target);
-                    else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo) && !W.IsReady() && !Q.IsReady()
-                        && (target.CountEnemiesInRange(400) > 1 || DamageHandler.R(target) + DamageHandler.Q(target) > target.Health))
-                        R.Cast(target);
-
-                }
-                if (W.IsReady() && (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear) || Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo)))
-                {
-                    if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo) && HaveStun && target.CountEnemiesInRange(250) > 1)
-                        W.Cast(target);
-                    else if (!Q.IsReady())
-                        W.Cast(target);
-                    else if (target.HasBuffOfType(BuffType.Stun) || target.HasBuffOfType(BuffType.Snare) || target.HasBuffOfType(BuffType.Charm) ||
-                    target.HasBuffOfType(BuffType.Fear) || target.HasBuffOfType(BuffType.Taunt))
-                    {
-                        W.Cast(target);
-                    }
-                }
-                if (Q.IsReady() && (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear) || Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo)))
-                {
-                    if (HaveStun && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo) && target.CountEnemiesInRange(400) > 1 && (W.IsReady() || R.IsReady()))
-                    {
-                        return;
-                    }
-                    else
-                        Q.Cast(target);
-                }
-            }
-            if (AllInOne["sup"].Cast<CheckBox>().CurrentValue)
-            {
-                if (Q.IsReady() && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear) && Player.Mana > RMANA + QMANA)
-                    farmQ();
-            }
-            else
-            {
-                if (Q.IsReady() && (!HaveStun || Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear)) && (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass) || Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LastHit) || Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear)))
-                    farmQ();
-            }
-
-            SetMana();
-            if (AllInOne["autoE"].Cast<CheckBox>().CurrentValue && E.IsReady() && !HaveStun && Player.Mana > RMANA + EMANA + QMANA + WMANA && Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear))
                 E.Cast();
-
-            
-            if (AllInOne["tibers"].Cast<CheckBox>().CurrentValue && HaveTibers)
-            {
-                var BestEnemy = TargetSelector.GetTarget(3500, DamageType.Magical);
-                if (BestEnemy.IsValidTarget(2000) && Game.Time - TibbersTimer > 2)
-                {
-                    EloBuddy.Player.IssueOrder(GameObjectOrder.MovePet, BestEnemy.Position);
-                    R.Cast(BestEnemy);
-                    TibbersTimer = Game.Time;
-                }
-            }
-            else
-            {
-                Tibbers = null;
-            }
-
-            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear)
-                || Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.JungleClear))
-            {
-                farmQ();
-            }
-
-
-        }
-
-        private static void farmQ()
-        {
-            if (!AllInOne["farmQ"].Cast<CheckBox>().CurrentValue && !AllInOne["farmW"].Cast<CheckBox>().CurrentValue)
-                return;
-            var allMinionsQ = EntityManager.GetLaneMinions(
-                EntityManager.UnitTeam.Enemy,
-                Player.Position.To2D(),
-                Q.Range);
-            if (Q.IsReady())
-            {
-                var mobs = EntityManager.GetJungleMonsters(Player.Position.To2D(), Q.Range);
-                if (mobs.Count > 0)
-                {
-                    var mob = mobs[0];
-                    Q.Cast(mob);
-                    if (AllInOne["farmW"].Cast<CheckBox>().CurrentValue
-                        && ObjectManager.Player.ManaPercent > AllInOne["Mana"].Cast<Slider>().CurrentValue
-                        && W.IsReady())
-                    {
-                        W.Cast(mob);
-                    }
-                }
-            }
-
-            foreach (var minion in allMinionsQ)
-            {
-                if (minion.Health > ObjectManager.Player.GetAutoAttackDamage(minion) && minion.Health < DamageHandler.Q(minion))
-                {
-                    Q.Cast(minion);
-                    return;
-                }
-            }
-            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear) && ObjectManager.Player.ManaPercent > AllInOne["Mana"].Cast<Slider>().CurrentValue && AllInOne["farmW"].Cast<CheckBox>().CurrentValue && ObjectManager.Player.Mana > RMANA + QMANA + EMANA + WMANA * 2)
-            {
-                var Wfarm = EntityManager.GetLaneMinions(
-                    EntityManager.UnitTeam.Enemy,
-                    Player.Position.To2D(),
-                    W.Range);
-                if (Wfarm.Count > 2 && W.IsReady())
-                {
-                    W.Cast(Wfarm.OrderBy(x => x.IsValid()).FirstOrDefault().ServerPosition);
-                }
             }
         }
 
-        private static void SetMana()
+        public static void Tibbersmove()
         {
-            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo) || Player.HealthPercent < 20)
+            var target = TargetSelector.GetTarget(2000, DamageType.Magical);
+
+            if (Player.HasBuff("infernalguardiantime") && Player.HasBuff("infernalguardiantimer"))
             {
-                QMANA = 0;
-                WMANA = 0;
-                EMANA = 0;
-                RMANA = 0;
-                return;
+                EloBuddy.Player.IssueOrder(GameObjectOrder.MovePet,
+                    target.IsValidTarget(1500) ? target.Position : GetTurrets().Position);
             }
-
-            QMANA = Q.Handle.SData.Mana;
-            WMANA = W.Handle.SData.Mana;
-            EMANA = E.Handle.SData.Mana;
-
-            if (!R.IsReady())
-                RMANA = QMANA - Player.PARRegenRate * Q.Handle.Cooldown;
-            else
-                RMANA = R.Handle.SData.Mana;
-        }
-
-        private static bool HaveStun
-        {
-            get
-            {
-                var buffs = Player.Buffs.Where(buff => (buff.Name.ToLower() == "pyromania" || buff.Name.ToLower() == "pyromania_particle"));
-                if (buffs.Any())
-                {
-                    var buff = buffs.First();
-                    if (buff.Name.ToLower() == "pyromania_particle")
-                        return true;
-                    else
-                        return false;
-                }
-                return false;
-            }
-        }
-
-        private static bool HaveTibers
-        {
-            get { return ObjectManager.Player.HasBuff("infernalguardiantimer"); }
         }
 
     }
