@@ -24,7 +24,7 @@ namespace TrustViktorPorted
         private static readonly AIHeroClient player = ObjectManager.Player;
 
         // Spells
-        public static Spell.Targeted Q;
+        public static Spell.Targeted Q, Ignite;
         public static Spell.Skillshot W, E, R;
         private static readonly int maxRangeE = 1225;
         private static readonly int lengthE = 700;
@@ -58,6 +58,8 @@ namespace TrustViktorPorted
             W = new Spell.Skillshot(SpellSlot.W, 700, SkillShotType.Circular, (int)0.5f, int.MaxValue, 300);
             E = new Spell.Skillshot(SpellSlot.E, (uint)rangeE, SkillShotType.Linear, 0, speedE, 80);
             R = new Spell.Skillshot(SpellSlot.R, 700, SkillShotType.Circular, (int)0.25f, int.MaxValue, (int)450f);
+            Ignite = new Spell.Targeted(player.GetSpellSlotFromName("summonerdot"), 600);
+            
 
             main = MainMenu.AddMenu("TRUSt in my" + CHAMP_NAME, CHAMP_NAME);
             combo = main.AddSubMenu("Combo", "combo");
@@ -355,6 +357,10 @@ namespace TrustViktorPorted
             var Etarget = TargetSelector.GetTarget(maxRangeE, DamageType.Magical);
             var Qtarget = TargetSelector.GetTarget(Q.Range, DamageType.Magical);
             var RTarget = TargetSelector.GetTarget(R.Range, DamageType.Magical);
+            if ((Qtarget.Health <= 50 + 20 * player.Level - (Qtarget.HPRegenRate / 5 * 3)) || (R.IsInRange(Qtarget) &&R.IsReady() && Damage.RDamage(Qtarget) + 50 + 20 * player.Level - (Qtarget.HPRegenRate / 5 * 3) >= Qtarget.Health))
+            {
+                Ignite.Cast(Qtarget);
+            }
             if (killpriority && Qtarget != null & Etarget != null && Etarget != Qtarget && ((Etarget.Health > TotalDmg(Etarget, false, true, false, false)) || (Etarget.Health > TotalDmg(Etarget, false, true, true, false) && Etarget == RTarget)) && Qtarget.Health < TotalDmg(Qtarget, true, true, false, false))
             {
                 Etarget = Qtarget;
@@ -386,19 +392,19 @@ namespace TrustViktorPorted
 
                 if (t != null)
                 {
-                    if (t.Path.Count() < 2)
+                    if (t.Path.Count() > 0)
                     {
                         if (t.HasBuffOfType(BuffType.Slow))
                         {
-                            if (W.GetPrediction(t).HitChance >= HitChance.Medium)
+                            if (W.GetPrediction(t).HitChance >= HitChance.High)
                             {
                                 W.Cast(t);
                                 return;
                             }
                         }
-                        if (t.CountEnemiesInRange(250) > 2)
+                        if (t.CountEnemiesInRange(250) > 0)
                         {
-                            if (W.GetPrediction(t).HitChance >= HitChance.Medium)
+                            if (W.GetPrediction(t).HitChance >= HitChance.High)
                             {
                                 W.Cast(t);
                                 return;
@@ -424,15 +430,13 @@ namespace TrustViktorPorted
             if (target.Distance(player) > maxRangeE) return;
 
             var posInicial = target.Position;
-            if (E.IsInRange(target))
+            if (player.CountEnemiesInRange(E.Range) >= 2)
             {
-                posInicial = posInicial.Extend(target.Position, 100);
-
-                var pred = E.GetPrediction(target);
-
-                if (pred.HitChance == HitChance.High)
+                var firstTarget = ObjectManager.Get<AIHeroClient>().Where(a => a.IsEnemy).Where(a => !a.IsDead).Where(a => a.Distance(player) < maxRangeE).FirstOrDefault();
+                var lasttTarget = ObjectManager.Get<AIHeroClient>().Where(a => a.IsEnemy).Where(a => !a.IsDead).Where(a => a.Distance(player) < E.Range).LastOrDefault();
+                if (firstTarget != null && lasttTarget != null)
                 {
-                    CastE(posInicial, pred.UnitPosition);
+                    CastE(firstTarget.Position, lasttTarget.Position);
                 }
             }
             else if (target.Distance(player) < maxRangeE)
@@ -444,6 +448,17 @@ namespace TrustViktorPorted
                 if (pred.HitChance >= HitChance.Medium)
                     CastE(target.Position, maxPosition.Extend(player.Position.To2D(), 30).To3D());
 
+            }
+            else if (E.IsInRange(target))
+            {
+                posInicial = posInicial.Extend(target.Position, 100);
+
+                var pred = E.GetPrediction(target);
+
+                if (pred.HitChance == HitChance.High)
+                {
+                    CastE(posInicial, pred.UnitPosition);
+                }
             }
         }
 
