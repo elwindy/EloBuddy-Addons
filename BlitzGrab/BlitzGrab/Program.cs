@@ -201,7 +201,7 @@ namespace BlitzGrab
                                 Q.Width,
                                 Q.CastDelay,
                                 Q.Speed,
-                                int.MaxValue).HitChance == HitChance.Dashing)
+                                int.MaxValue).HitChance == HitChance.Dashing && !ii.IsAlly)
                         {
                             Q.Cast(ii);
                         }
@@ -216,7 +216,7 @@ namespace BlitzGrab
                                 Q.Width,
                                 Q.CastDelay,
                                 Q.Speed,
-                                int.MaxValue).HitChance == HitChance.Immobile)
+                                int.MaxValue).HitChance == HitChance.Immobile && !ii.IsAlly)
                         {
                             Q.Cast(ii);
                         }
