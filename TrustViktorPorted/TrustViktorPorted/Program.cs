@@ -121,6 +121,7 @@ namespace TrustViktorPorted
             Orbwalker.OnPreAttack += Orbwalker_OnPreAttack;
             Drawing.OnDraw += Drawing_OnDraw;
             Game.OnUpdate += Game_OnUpdate;
+            Chat.Print("TrustViktorPorted loaded!", Color.Indigo);
         }
 
         static void Drawing_OnDraw(EventArgs args)
@@ -389,10 +390,9 @@ namespace TrustViktorPorted
             if (useW)
             {
                 var t = TargetSelector.GetTarget(W.Range, DamageType.Magical);
-
                 if (t != null)
                 {
-                    if (t.Path.Count() > 0)
+                    if (t.Path.Count() < 2)
                     {
                         if (t.HasBuffOfType(BuffType.Slow))
                         {
@@ -402,13 +402,23 @@ namespace TrustViktorPorted
                                 return;
                             }
                         }
-                        if (t.CountEnemiesInRange(250) > 0)
+                        if (t.CountEnemiesInRange(250) > 2)
                         {
                             if (W.GetPrediction(t).HitChance >= HitChance.High)
                             {
                                 W.Cast(t);
-                                return;
+                                    return;
                             }
+                        }
+                        if (player.Position.Distance(t.ServerPosition) < player.Position.Distance(t.Position))
+                        {
+                            W.Cast(t);
+                                return;
+                        }
+                        else
+                        {
+                            W.Cast(t);
+                                return;
                         }
                     }
                 }
