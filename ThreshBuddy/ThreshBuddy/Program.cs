@@ -134,12 +134,18 @@ namespace ThreshBuddy
         static void AIHeroClient_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             
-            if (sender.IsAlly) return;
+            if (!sender.IsEnemy || sender.IsMinion) return;
             // flash
             if(args.SData.Name == "summonerflash")
             {
-                var pred = Q.GetPrediction(sender);
-                if (pred.HitChance >= HitChance.Medium && !pred.CollisionObjects.Any())
+                if (Prediction.Position.PredictLinearMissile(
+                    sender,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue,
+                    args.End).HitChance >= HitChance.High)
                 {
                     Q.Cast(args.End);
                 }
@@ -147,8 +153,14 @@ namespace ThreshBuddy
                 // ezreal e
             else if (args.SData.Name == "EzrealArcaneShift")
             {
-                var pred = Q.GetPrediction(sender);
-                if (pred.HitChance >= HitChance.Medium && !pred.CollisionObjects.Any())
+                if (Prediction.Position.PredictLinearMissile(
+                    sender,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue,
+                    args.End).HitChance >= HitChance.High)
                 {
                     Q.Cast(args.End);
                 }
@@ -156,8 +168,14 @@ namespace ThreshBuddy
                 //shaco q
             else if (args.SData.Name == "Deceive")
             {
-                var pred = Q.GetPrediction(sender);
-                if (pred.HitChance >= HitChance.Medium && !pred.CollisionObjects.Any())
+                if (Prediction.Position.PredictLinearMissile(
+                    sender,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue,
+                    args.End).HitChance >= HitChance.High)
                 {
                     Q.Cast(args.End);
                 }
@@ -207,7 +225,13 @@ namespace ThreshBuddy
             {
                 E.Cast(sender);
             }
-            else if (Q.IsReady() && hookMenu["QInterrupt"].Cast<CheckBox>().CurrentValue)
+            else if (Q.IsReady() && hookMenu["QInterrupt"].Cast<CheckBox>().CurrentValue && Prediction.Position.PredictLinearMissile(
+                    sender,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).HitChance >= HitChance.Low)
             {
                 Q.Cast(sender);
             }
@@ -232,7 +256,13 @@ namespace ThreshBuddy
                     || x.HasBuffOfType(BuffType.Stun) || x.HasBuffOfType(BuffType.Suppression)
                     || x.HasBuffOfType(BuffType.Snare));
 
-            if (autoQTarget != null && !autoQTarget.HasBuff("ThreshQ"))
+            if (autoQTarget != null && !autoQTarget.HasBuff("ThreshQ") && Prediction.Position.PredictLinearMissile(
+                    autoQTarget,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).HitChance >= HitChance.High)
             {
                 Q.Cast(autoQTarget);
             }
@@ -280,9 +310,14 @@ namespace ThreshBuddy
             {
                 var endPosition = args.Path.Last();
 
-                var prediction = Q.GetPrediction(sender);
-
-                if (prediction.HitChance != HitChance.High && prediction.CollisionObjects.Any())
+                if (Prediction.Position.PredictLinearMissile(
+                    sender,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue,
+                    endPosition).HitChance != HitChance.High)
                 {
                     return;
                 }
@@ -356,15 +391,15 @@ namespace ThreshBuddy
 
             if (Q.IsReady())
             {
-                var pred = Q.GetPrediction(target);
-                if (useQ1 && !target.HasBuff("ThreshQ") && pred.HitChance == HitChance.Medium && !pred.CollisionObjects.Any())
+                if (useQ1 && !target.HasBuff("ThreshQ") && Prediction.Position.PredictLinearMissile(
+                    target,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).HitChance >= HitChance.High)
                 {
-                    Q.Cast(pred.CastPosition);
-                }
-                else if (useQ1 &&!target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High && !target.IsMoving
-                        && !pred.CollisionObjects.Any())
-                {
-                    Q.Cast(pred.UnitPosition);
+                    Q.Cast(target);
                 }
 
                 if (useQ2 && target.HasBuff("ThreshQ"))
@@ -417,14 +452,19 @@ namespace ThreshBuddy
 
             if (useQ && Q.IsReady())
             {
-                var pred = Q.GetPrediction(target);
                 if (target.HasBuff("ThreshQ"))
                 {
                     Q2.Cast();
                 }
-                else if (!target.HasBuff("ThreshQ") && pred.HitChance == HitChance.High && !pred.CollisionObjects.Any())
+                else if (!target.HasBuff("ThreshQ") && Prediction.Position.PredictLinearMissile(
+                    target,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).HitChance >= HitChance.High)
                 {
-                    Q.Cast(pred.CastPosition);
+                    Q.Cast(target);
                 }
             }
 
