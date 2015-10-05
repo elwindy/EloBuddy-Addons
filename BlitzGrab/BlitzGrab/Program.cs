@@ -190,7 +190,7 @@ namespace BlitzGrab
             {
                 foreach (var ii in
                     ObjectManager.Get<AIHeroClient>()
-                        .Where(x => x.IsValidTarget(menuM["maxdist"].Cast<Slider>().CurrentValue)))
+                        .Where(x => x.IsValidTarget(menuM["maxdist"].Cast<Slider>().CurrentValue) && !x.IsAlly))
                 {
                     if (dashing)
                     {
@@ -201,7 +201,7 @@ namespace BlitzGrab
                                 Q.Width,
                                 Q.CastDelay,
                                 Q.Speed,
-                                int.MaxValue).HitChance == HitChance.Dashing && !ii.IsAlly)
+                                int.MaxValue).HitChance == HitChance.Dashing)
                         {
                             Q.Cast(ii);
                         }
@@ -216,7 +216,7 @@ namespace BlitzGrab
                                 Q.Width,
                                 Q.CastDelay,
                                 Q.Speed,
-                                int.MaxValue).HitChance == HitChance.Immobile && !ii.IsAlly)
+                                int.MaxValue).HitChance == HitChance.Immobile)
                         {
                             Q.Cast(ii);
                         }
