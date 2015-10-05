@@ -137,11 +137,6 @@ namespace ChoBuddy
                     }
                 };
             harass.Add("ManaManagerHarass", new Slider("Maximum mana usage in percent ({0}%)", 50));
-            clear = main.AddSubMenu("Lane Clear", "laneclear");
-            clear.AddGroupLabel("Lane Clear Settings");
-            clear.Add("UseQLane", new Slider("Use Q on minion >=", 3, 1, 5));
-            clear.Add("UseWLane", new Slider("Use W on minion >=", 3, 1, 5));
-            clear.Add("ManaManagerLane", new Slider("Maximum mana usage in percent ({0}%)", 75));
             misc = main.AddSubMenu("Misc", "misc");
             misc.AddGroupLabel("Misc Settings");
             misc.Add("AutoQ", new CheckBox("Auto Q on Immobile"));
@@ -194,50 +189,9 @@ namespace ChoBuddy
             {
                 Harass();
             }
-            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear))
-            {
-                Laneclear();
-            }
         }
 
-        private static void Laneclear()
-        {
-            var useq = clear["UseQLane"].Cast<Slider>().CurrentValue;
-            var usew = clear["UseWLane"].Cast<Slider>().CurrentValue;
-            var mana = clear["ManaManagerLane"].Cast<Slider>().CurrentValue;
-            if (ObjectManager.Player.ManaPercent < mana)
-            {
-                
-                return;
-            }
-
-            if (q.IsReady())
-            {
-                var minions = EntityManager.GetLaneMinions(EntityManager.UnitTeam.Enemy, ObjectManager.Player.Position.To2D(), q.Range,
-                true);
-                if (minions.Count >= useq)
-                {
-                    foreach (var minion in minions.Where(x => x.IsValidTarget(q.Range + q.Width)))
-                    {
-                            q.Cast(minion.ServerPosition);
-                        
-                    }
-                }
-            }
-
-            else if (w.IsReady())
-            {
-                var minions = EntityManager.GetLaneMinions(EntityManager.UnitTeam.Enemy, ObjectManager.Player.Position.To2D(), w.Range,
-                true);
-                if (minions.Count >= usew)
-                {
-                    foreach (var minion in minions.Where(x => x.IsValidTarget(w.Range + w.Width)))
-                    {
-                         w.Cast(minion.ServerPosition);
-                    }
-                }
-            }
-        }
+        
 
         private static float GetRealRRange(AIHeroClient target)
         {
@@ -258,14 +212,25 @@ namespace ChoBuddy
             if (useq && q.IsReady())
             {
                 var target = TargetSelector.GetTarget(q.Range, DamageType.Magical);
-                if (target.IsValidTarget(q.Range))
+                var t = q.GetPrediction(target).CastPosition;
+                float x = target.MoveSpeed;
+                float y = x * 850 / 1000;
+                var pos = target.Position;
+                if (target.Distance(t) <= y)
                 {
-                    var pred = q.GetPrediction(target);
-
-                    if (pred.HitChance >= hcqharass)
-                    {
-                        q.Cast(pred.UnitPosition);
-                    }
+                    pos = t;
+                }
+                if (target.Distance(t) > y)
+                {
+                    pos = (Vector3)target.Position.Extend(t, y);
+                }
+                if (ObjectManager.Player.Distance(pos) <= 949 && target.Distance(pos) >= 100)
+                {
+                    q.Cast(pos);
+                }
+                if (ObjectManager.Player.Distance(target.Position) <= ObjectManager.Player.BoundingRadius + ObjectManager.Player.AttackRange + target.BoundingRadius)
+                {
+                    q.Cast(pos);
                 }
             }
 
@@ -293,15 +258,26 @@ namespace ChoBuddy
             if (useq && q.IsReady())
             {
                 var target = TargetSelector.GetTarget(q.Range, DamageType.Magical);
-                if (target.IsValidTarget(q.Range))
-                {
-                    var pred = q.GetPrediction(target);
-
-                    if (pred.HitChance >= hcq)
+                    var t = q.GetPrediction(target).CastPosition;
+                    float x = target.MoveSpeed;
+                    float y = x * 850 / 1000;
+                    var pos = target.Position;
+                    if (target.Distance(t) <= y)
                     {
-                        q.Cast(pred.UnitPosition);
+                        pos = t;
                     }
-                }
+                    if (target.Distance(t) > y)
+                    {
+                        pos = (Vector3)target.Position.Extend(t, y);
+                    }
+                    if (ObjectManager.Player.Distance(pos) <= 949 && target.Distance(pos) >= 100)
+                    {
+                        q.Cast(pos);
+                    }
+                    if (ObjectManager.Player.Distance(target.Position) <= ObjectManager.Player.BoundingRadius + ObjectManager.Player.AttackRange + target.BoundingRadius)
+                    {
+                        q.Cast(pos);
+                    }
             }
 
             if (usew && w.IsReady())
