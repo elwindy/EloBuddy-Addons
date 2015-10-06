@@ -10,6 +10,7 @@ namespace ThreshBuddy
 {
     using System.Diagnostics.CodeAnalysis;
     using System.Linq;
+    using System.Reflection;
 
     using EloBuddy.SDK.Rendering;
 
@@ -82,7 +83,6 @@ namespace ThreshBuddy
             W = new Spell.Skillshot(SpellSlot.W,950,SkillShotType.Circular,(int)0.25f,1750,300);
             E = new Spell.Skillshot(SpellSlot.E, 500,SkillShotType.Linear,1,2000,110);
             R = new Spell.Active(SpellSlot.R,350);
-
             menu = MainMenu.AddMenu("ThreshBuddy", "threshBuddy");
             menu.AddGroupLabel("ThreshBuddy");
             menu.AddLabel("made by the Heluder");
