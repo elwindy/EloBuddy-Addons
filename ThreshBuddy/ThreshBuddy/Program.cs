@@ -117,7 +117,7 @@ namespace ThreshBuddy
             hookMenu.AddSeparator();
             pull_push = menu.AddSubMenu("Pull/Push Keybinds", "ppkeys");
             pull_push.Add("push", new KeyBind("Push Enemy", false, KeyBind.BindTypes.HoldActive, 88));
-            pull_push.Add("push", new KeyBind("Pull Enemy", false, KeyBind.BindTypes.HoldActive, 90));
+            pull_push.Add("pull", new KeyBind("Pull Enemy", false, KeyBind.BindTypes.HoldActive, 90));
 
             Chat.Print("<font color=\"#7CFC00\"><b>ThreshBuddy:</b></font> by Heluder loaded");
 
