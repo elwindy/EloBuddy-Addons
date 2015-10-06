@@ -50,7 +50,7 @@ namespace ThreshBuddy
 
         public static Menu hookMenu;
 
-        public static Menu drawMenu;
+        public static Menu drawMenu, pull_push;
 
         /// <summary>
         /// The main.
@@ -115,6 +115,9 @@ namespace ThreshBuddy
             hookMenu.Add("QInterrupt", new CheckBox("Q to Interrupt"));
             hookMenu.Add("QImmobile", new CheckBox("Q on Immobile"));
             hookMenu.AddSeparator();
+            pull_push = menu.AddSubMenu("Pull/Push Keybinds", "ppkeys");
+            pull_push.Add("push", new KeyBind("Push Enemy", false, KeyBind.BindTypes.HoldActive, 88));
+            pull_push.Add("push", new KeyBind("Pull Enemy", false, KeyBind.BindTypes.HoldActive, 90));
 
             Chat.Print("<font color=\"#7CFC00\"><b>ThreshBuddy:</b></font> by Heluder loaded");
 
@@ -134,7 +137,7 @@ namespace ThreshBuddy
         static void AIHeroClient_OnProcessSpellCast(Obj_AI_Base sender, GameObjectProcessSpellCastEventArgs args)
         {
             
-            if (!sender.IsEnemy || sender.IsMinion) return;
+            if (!sender.IsEnemy || sender.IsMinion || sender.IsAlly || sender.IsValidTarget(Q.Range)) return;
             // flash
             if(args.SData.Name == "summonerflash")
             {
@@ -235,8 +238,6 @@ namespace ThreshBuddy
             {
                 Q.Cast(sender);
             }
-            AutoW();
-            AutoQ();
         }
 
         /// <summary>
@@ -370,7 +371,40 @@ namespace ThreshBuddy
             {
                 Harass();
             }
-            
+
+            AutoW();
+            AutoQ();
+            if (pull_push["push"].Cast<KeyBind>().CurrentValue)
+            {
+                var target = TargetSelector.GetTarget(E.Range, DamageType.Physical);
+                if (target != null)
+                Push(target);
+            }
+            if (pull_push["pull"].Cast<KeyBind>().CurrentValue)
+            {
+                var target = TargetSelector.GetTarget(E.Range, DamageType.Physical);
+                if (target != null)
+                Pull(target);
+            }
+        }
+
+        private static void Pull(AIHeroClient target)
+        {
+            if (Player.Distance(target) <= E.Range)
+            {
+                var pX = Player.Position.X + (Player.Position.X - target.Position.X);
+                var pY = Player.Position.Y + (Player.Position.Y - target.Position.Y);
+                E.Cast(new Vector3(new Vector2(pX), pY));
+
+            }
+        }
+
+        private static void Push(AIHeroClient target)
+        {
+            if (Player.Distance(target) <= E.Range)
+            {
+                E.Cast(target.ServerPosition);
+            }
         }
 
         /// <summary>
