@@ -188,9 +188,7 @@ namespace BlitzGrab
         {
             if (Q.IsReady())
             {
-                foreach (var ii in
-                    ObjectManager.Get<AIHeroClient>()
-                        .Where(x => x.IsValidTarget(menuM["maxdist"].Cast<Slider>().CurrentValue) && !x.IsAlly))
+                foreach (var ii in HeroManager.Enemies.Where(x => x.IsValidTarget(menuM["maxdist"].Cast<Slider>().CurrentValue)))
                 {
                     if (dashing)
                     {
@@ -287,7 +285,7 @@ namespace BlitzGrab
         {
             if (user && R.IsReady())
             {
-                var rtarget = ObjectManager.Get<AIHeroClient>().FirstOrDefault(h => h.IsEnemy);
+                var rtarget = HeroManager.Enemies.FirstOrDefault();
                 if (rtarget.IsValidTarget(R.Range) && rtarget != null)
                 {
                     if (Player.GetSpellDamage(rtarget, SpellSlot.R) >= rtarget.Health)
@@ -297,7 +295,7 @@ namespace BlitzGrab
 
             if (usee && E.IsReady())
             {
-                var etarget = ObjectManager.Get<AIHeroClient>().FirstOrDefault(h => h.IsEnemy);
+                var etarget = HeroManager.Enemies.FirstOrDefault();
                 if (etarget.IsValidTarget(E.Range) && etarget != null)
                 {
                     if (Player.GetSpellDamage(etarget, SpellSlot.E) >= etarget.Health)
@@ -307,7 +305,7 @@ namespace BlitzGrab
 
             if (useq && Q.IsReady())
             {
-                var qtarget = ObjectManager.Get<AIHeroClient>().FirstOrDefault(h => h.IsEnemy);
+                var qtarget = HeroManager.Enemies.FirstOrDefault();
                 if (qtarget.IsValidTarget(menuM["maxdist"].Cast<Slider>().CurrentValue) && qtarget != null)
                 {
                     if (Player.GetSpellDamage(qtarget, SpellSlot.Q) >= qtarget.Health && Prediction.Position.PredictLinearMissile(
