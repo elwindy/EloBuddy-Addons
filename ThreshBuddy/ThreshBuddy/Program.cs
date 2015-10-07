@@ -436,7 +436,7 @@ namespace ThreshBuddy
                     Q.Cast(target);
                 }
 
-                if (useQ2 && target.HasBuff("ThreshQ"))
+                if (useQ2 && target.HasBuff("ThreshQ") && !target.IsMinion)
                 {
                     Q2.Cast();
                 }
@@ -486,7 +486,7 @@ namespace ThreshBuddy
 
             if (useQ && Q.IsReady())
             {
-                if (target.HasBuff("ThreshQ"))
+                if (target.HasBuff("ThreshQ") && !target.IsMinion)
                 {
                     Q2.Cast();
                 }
