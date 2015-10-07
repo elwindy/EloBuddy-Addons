@@ -137,6 +137,8 @@ namespace ChoBuddy
                     }
                 };
             harass.Add("ManaManagerHarass", new Slider("Maximum mana usage in percent ({0}%)", 50));
+			clear = main.AddSubMenu("Clear", "clear");
+			clear.AddGroupLabel("Soon :)");
             misc = main.AddSubMenu("Misc", "misc");
             misc.AddGroupLabel("Misc Settings");
             misc.Add("AutoQ", new CheckBox("Auto Q on Immobile"));
@@ -156,7 +158,7 @@ namespace ChoBuddy
 
         private static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
         {
-            if (!misc["UseInt"].Cast<CheckBox>().CurrentValue) return;
+            if (!misc["UseInt"].Cast<CheckBox>().CurrentValue || sender.IsAlly) return;
 
             if (ObjectManager.Player.Distance(sender.Position) < w.Range && w.IsReady())
             {
@@ -172,7 +174,7 @@ namespace ChoBuddy
 
         static void Gapcloser_OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
         {
-            if (!misc["Q_Gap_Closer"].Cast<CheckBox>().CurrentValue) return;
+            if (!misc["Q_Gap_Closer"].Cast<CheckBox>().CurrentValue || sender.IsAlly) return;
 
             if (q.IsReady() && e.Sender.Distance(ObjectManager.Player.Position) < 500)
                 q.Cast(e.Sender.ServerPosition);
@@ -212,39 +214,20 @@ namespace ChoBuddy
             if (useq && q.IsReady())
             {
                 var target = TargetSelector.GetTarget(q.Range, DamageType.Magical);
-                var t = q.GetPrediction(target).CastPosition;
-                float x = target.MoveSpeed;
-                float y = x * 850 / 1000;
-                var pos = target.Position;
-                if (target.Distance(t) <= y)
+                if (
+                    Prediction.Position.PredictCircularMissile(target, q.Range, q.Radius, q.CastDelay, q.Speed)
+                        .HitChance >= hcqharass)
                 {
-                    pos = t;
-                }
-                if (target.Distance(t) > y)
-                {
-                    pos = (Vector3)target.Position.Extend(t, y);
-                }
-                if (ObjectManager.Player.Distance(pos) <= 949 && target.Distance(pos) >= 100)
-                {
-                    q.Cast(pos);
-                }
-                if (ObjectManager.Player.Distance(target.Position) <= ObjectManager.Player.BoundingRadius + ObjectManager.Player.AttackRange + target.BoundingRadius)
-                {
-                    q.Cast(pos);
+                    q.Cast(target);
                 }
             }
 
             if (usew && w.IsReady())
             {
                 var target = TargetSelector.GetTarget(w.Range, DamageType.Magical);
-                if (target.IsValidTarget(q.Range))
+                if (target.IsValidTarget(q.Range) && Prediction.Position.PredictConeSpell(target, w.Range, w.ConeAngleDegrees, w.CastDelay, w.Speed).HitChance >= hcwharass)
                 {
-                    var pred = w.GetPrediction(target);
-
-                    if (pred.HitChance >= hcwharass)
-                    {
-                        w.Cast(pred.UnitPosition);
-                    }
+                    w.Cast(target);
                 }
             }
         }
@@ -258,39 +241,20 @@ namespace ChoBuddy
             if (useq && q.IsReady())
             {
                 var target = TargetSelector.GetTarget(q.Range, DamageType.Magical);
-                    var t = q.GetPrediction(target).CastPosition;
-                    float x = target.MoveSpeed;
-                    float y = x * 850 / 1000;
-                    var pos = target.Position;
-                    if (target.Distance(t) <= y)
-                    {
-                        pos = t;
-                    }
-                    if (target.Distance(t) > y)
-                    {
-                        pos = (Vector3)target.Position.Extend(t, y);
-                    }
-                    if (ObjectManager.Player.Distance(pos) <= 949 && target.Distance(pos) >= 100)
-                    {
-                        q.Cast(pos);
-                    }
-                    if (ObjectManager.Player.Distance(target.Position) <= ObjectManager.Player.BoundingRadius + ObjectManager.Player.AttackRange + target.BoundingRadius)
-                    {
-                        q.Cast(pos);
-                    }
+                if (
+                    Prediction.Position.PredictCircularMissile(target, q.Range, q.Radius, q.CastDelay, q.Speed)
+                        .HitChance >= hcq)
+                {
+                    q.Cast(target);
+                }
             }
 
             if (usew && w.IsReady())
             {
                 var target = TargetSelector.GetTarget(w.Range, DamageType.Magical);
-                if (target.IsValidTarget(q.Range))
+                if (target.IsValidTarget(q.Range) && Prediction.Position.PredictConeSpell(target, q.Range, q.ConeAngleDegrees, q.CastDelay, q.Speed).HitChance >= hcw)
                 {
-                    var pred = w.GetPrediction(target);
-
-                    if (pred.HitChance >= hcw)
-                    {
-                        w.Cast(pred.UnitPosition);
-                    }
+                    w.Cast(target);
                 }
             }
 
