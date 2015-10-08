@@ -24,7 +24,7 @@ namespace BlitzGrab
 
         public static HitChance QHitChance = HitChance.High;
 
-        private static Menu _menu, menuK, menuD,  menuMain, menuM;
+        private static Menu _menu, menuK, menuD, menuMain, menuM;
         static void Main(string[] args)
         {
             Loading.OnLoadingComplete += Loading_OnLoadingComplete;
@@ -74,24 +74,29 @@ namespace BlitzGrab
             menuM.AddGroupLabel(":: Other/Misc");
             var qhitchance = menuM.Add("hitchanceq", new Slider("Q Hitchance 1-Low, 3-High", 3, 1, 3));
             qhitchance.OnValueChange += delegate
+            {
+                switch (qhitchance.CurrentValue)
                 {
-                    switch (qhitchance.CurrentValue)
-                    {
-                        case 1:
-                            QHitChance = HitChance.Low;
-                            break;
-                        case 2:
-                            QHitChance = HitChance.Medium;
-                            break;
-                        case 3:
-                            QHitChance = HitChance.High;
-                            break;
-                    }
-                };
+                    case 1:
+                        QHitChance = HitChance.Low;
+                        break;
+                    case 2:
+                        QHitChance = HitChance.Medium;
+                        break;
+                    case 3:
+                        QHitChance = HitChance.High;
+                        break;
+                }
+            };
             menuM.Add("mindist", new Slider("Mininum Distance to Q", (int)Q.Range - 100, 0, (int)Q.Range));
             menuM.Add("maxdist", new Slider("Maximum Distance to Q", (int)950f, 0, (int)950f));
             menuM.Add("hnd", new Slider("Dont grab if below health %"));
-            var predictedPositions = new Dictionary<int, Tuple<int, PredictionResult>>();
+            menuM.AddLabel("Dont Grab");
+            foreach (var enemies in HeroManager.Enemies)
+            {
+                menuM.Add("dont" + enemies.ChampionName, new CheckBox(enemies.ChampionName, false));
+            }
+            
             Interrupter.OnInterruptableSpell += Interrupter_OnInterruptableSpell;
             Drawing.OnDraw += Drawing_OnDraw;
             Game.OnTick += Game_OnTick;
@@ -152,6 +157,14 @@ namespace BlitzGrab
         {
             if (!sender.IsEnemy || !sender.IsValid() || sender.Type != Player.Type) return;
 
+
+            var pred = Prediction.Position.PredictLinearMissile(
+                sender,
+                Q.Range,
+                Q.Width,
+                Q.CastDelay,
+                Q.Speed,
+                int.MaxValue);
             if (menuMain["interruptq"].Cast<CheckBox>().CurrentValue && Q.IsReady()
                 && Prediction.Position.PredictLinearMissile(
                     sender,
@@ -159,11 +172,17 @@ namespace BlitzGrab
                     Q.Width,
                     Q.CastDelay,
                     Q.Speed,
-                    int.MaxValue).HitChance >= HitChance.Low)
+                    int.MaxValue).HitChance >= HitChance.Low && !Prediction.Position.PredictLinearMissile(
+                                sender,
+                                Q.Range,
+                                Q.Width,
+                                Q.CastDelay,
+                                Q.Speed,
+                                int.MaxValue).CollisionObjects.Any())
             {
                 if (sender.Distance(Player.ServerPosition, true) <= Q.RangeSquared)
                 {
-                    Q.Cast(sender);
+                    Q.Cast(pred.CastPosition);
                 }
             }
 
@@ -190,33 +209,28 @@ namespace BlitzGrab
             {
                 foreach (var ii in HeroManager.Enemies.Where(x => x.IsValidTarget(menuM["maxdist"].Cast<Slider>().CurrentValue)))
                 {
+                    var pred = Prediction.Position.PredictLinearMissile(
+                ii,
+                Q.Range,
+                Q.Width,
+                Q.CastDelay,
+                Q.Speed,
+                int.MaxValue);
                     if (dashing)
                     {
                         if (ii.Distance(Player.ServerPosition) > menuM["mindist"].Cast<Slider>().CurrentValue
-                            && Prediction.Position.PredictLinearMissile(
-                                ii,
-                                Q.Range,
-                                Q.Width,
-                                Q.CastDelay,
-                                Q.Speed,
-                                int.MaxValue).HitChance == HitChance.Dashing)
+                            && pred.HitChance == HitChance.Dashing && !menuM["dont" + ii.ChampionName].Cast<CheckBox>().CurrentValue && !pred.CollisionObjects.Any())
                         {
-                            Q.Cast(ii);
+                            Q.Cast(pred.CastPosition);
                         }
                     }
 
                     if (immobile)
                     {
                         if (ii.Distance(Player.ServerPosition) > menuM["mindist"].Cast<Slider>().CurrentValue + 100
-                            && Prediction.Position.PredictLinearMissile(
-                                ii,
-                                Q.Range,
-                                Q.Width,
-                                Q.CastDelay,
-                                Q.Speed,
-                                int.MaxValue).HitChance == HitChance.Immobile)
+                            && pred.HitChance == HitChance.Immobile && !menuM["dont" + ii.ChampionName].Cast<CheckBox>().CurrentValue && !pred.CollisionObjects.Any())
                         {
-                            Q.Cast(ii);
+                            Q.Cast(pred.CastPosition);
                         }
                     }
                 }
@@ -232,15 +246,17 @@ namespace BlitzGrab
                 {
                     if (qtarget.Distance(Player.ServerPosition) > menuM["mindist"].Cast<Slider>().CurrentValue)
                     {
-                        if (Prediction.Position.PredictLinearMissile(
-                                qtarget,
-                                Q.Range,
-                                Q.Width,
-                                Q.CastDelay,
-                                Q.Speed,
-                                int.MaxValue).HitChance >= QHitChance)
+                        var pred = Prediction.Position.PredictLinearMissile(
+                            qtarget,
+                            Q.Range,
+                            Q.Width,
+                            Q.CastDelay,
+                            Q.Speed,
+                            int.MaxValue);
+                        var col = pred.CollisionObjects.Any();
+                        if (!col && pred.HitChance >= QHitChance && !menuM["dont" + qtarget.ChampionName].Cast<CheckBox>().CurrentValue)
                         {
-                            Q.Cast(qtarget);
+                            Q.Cast(pred.CastPosition);
                         }
                     }
                 }
@@ -314,9 +330,21 @@ namespace BlitzGrab
                                 Q.Width,
                                 Q.CastDelay,
                                 Q.Speed,
-                                int.MaxValue).HitChance >= HitChance.High)
+                                int.MaxValue).HitChance >= HitChance.High && !Prediction.Position.PredictLinearMissile(
+                                qtarget,
+                                Q.Range,
+                                Q.Width,
+                                Q.CastDelay,
+                                Q.Speed,
+                                int.MaxValue).CollisionObjects.Any())
                     {
-                        Q.Cast(qtarget);
+                        Q.Cast(Prediction.Position.PredictLinearMissile(
+                                qtarget,
+                                Q.Range,
+                                Q.Width,
+                                Q.CastDelay,
+                                Q.Speed,
+                                int.MaxValue).CastPosition);
                     }
                 }
             }
