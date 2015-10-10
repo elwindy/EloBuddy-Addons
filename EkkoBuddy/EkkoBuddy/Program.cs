@@ -44,11 +44,11 @@ namespace EkkoBuddy
                 return;
             }
 
-            Q = new Spell.Skillshot(SpellSlot.Q, 800, SkillShotType.Linear, (int).25, 1700, (int)60f);
-            Q2 = new Spell.Skillshot(SpellSlot.Q, 1050, SkillShotType.Linear, (int).5f, 1200, (int)120f);
-            W = new Spell.Skillshot(SpellSlot.W, 1600, SkillShotType.Circular, (int).5f, int.MaxValue, (int)350f);
+            Q = new Spell.Skillshot(SpellSlot.Q, 800, SkillShotType.Linear, (int).25, 1700, 60);
+            Q2 = new Spell.Skillshot(SpellSlot.Q, 1050, SkillShotType.Linear, (int).5f, 1200, 120);
+            W = new Spell.Skillshot(SpellSlot.W, 1600, SkillShotType.Circular, (int).5f, int.MaxValue, 350);
             E = new Spell.Skillshot(SpellSlot.E, 352,SkillShotType.Linear);
-            R = new Spell.Skillshot(SpellSlot.R, 375, SkillShotType.Circular, (int).1f, int.MaxValue, (int)375f);
+            R = new Spell.Skillshot(SpellSlot.R, 375, SkillShotType.Circular, (int).1f, int.MaxValue, 375);
             R1 = new Spell.Active(SpellSlot.R);
             main = MainMenu.AddMenu("EkkoBuddy", "ekko");
             spell = main.AddSubMenu("SpellMenu", "spellmenu");
@@ -549,8 +549,7 @@ namespace EkkoBuddy
                 }
             }
         }
-
-        
+       
         private static void CheckKs()
         {
             foreach (AIHeroClient target in ObjectManager.Get<AIHeroClient>().Where(x => x.IsValidTarget(Q2.Range)).OrderByDescending(GetComboDamage))
