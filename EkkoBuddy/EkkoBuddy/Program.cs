@@ -88,12 +88,6 @@ namespace EkkoBuddy
             harass.Add("UseEHarass", new CheckBox("Use E"));
             harass.Add("Harass", new Slider("Mana Manager", 50));
 
-            lane = main.AddSubMenu("LaneClear", "laneclear");
-            lane.AddGroupLabel("::LaneClear::");
-            lane.Add("UseQFarm", new CheckBox("Use Q"));
-            lane.Add("MinFarm", new Slider("Min Minion >=", 3, 1, 6));
-            lane.Add("Lane", new Slider("Mana Manager", 50));
-
             flee = main.AddSubMenu("Flee", "flee");
             flee.AddGroupLabel("::Flee::");
             flee.Add("UseQFlee", new CheckBox("Use Q"));
@@ -149,9 +143,6 @@ namespace EkkoBuddy
             }
             else
             {
-                if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.LaneClear))
-                    Farm();
-
                 if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
                     Harass();
             }
@@ -186,10 +177,15 @@ namespace EkkoBuddy
                 Vector2 wts = Drawing.WorldToScreen(Player.Position);
                 Drawing.DrawText(wts[0] - 20, wts[1], Color.White, "Enemies Hit with R: " + TargetHitWithR());
             }
+            
         }
 
         static void Gapcloser_OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
         {
+            if (e.Sender.IsAlly || e.Sender.IsMinion)
+            {
+                return;
+            }
             if (misc["UseGapQ"].Cast<CheckBox>().CurrentValue)
             {
                 if (Q.IsReady() && e.Sender.IsValidTarget(Q.Range))
@@ -205,6 +201,10 @@ namespace EkkoBuddy
 
         static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
         {
+            if (e.Sender.IsAlly)
+            {
+                return;
+            }
             if (!spell["UseInt"].Cast<CheckBox>().CurrentValue) return;
 
             if (Player.Distance(sender.Position) < W.Range && W.IsReady())
@@ -550,29 +550,7 @@ namespace EkkoBuddy
             }
         }
 
-        private static void Farm()
-        {
-            if (Player.ManaPercent <= lane["Lane"].Cast<Slider>().CurrentValue)
-                return;
-
-            var useQ = lane["UseQFarm"].Cast<CheckBox>().CurrentValue;
-
-            var minions = EntityManager.MinionsAndMonsters.GetLaneMinions(
-                EntityManager.UnitTeam.Enemy,
-                Player.ServerPosition,
-                Q.Range);
-            var min = lane["MinFarm"].Cast<Slider>().CurrentValue;
-
-            if (useQ && minions.Count >= min)
-            {
-                foreach(var objAiBase in minions)
-                {
-                    var minion = (Obj_AI_Minion)objAiBase;
-                    Q.Cast(minion.Position);
-                }
-            }
-        }
-
+        
         private static void CheckKs()
         {
             foreach (AIHeroClient target in ObjectManager.Get<AIHeroClient>().Where(x => x.IsValidTarget(Q2.Range)).OrderByDescending(GetComboDamage))
