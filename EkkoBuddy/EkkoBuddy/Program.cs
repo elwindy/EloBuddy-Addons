@@ -564,7 +564,7 @@ namespace EkkoBuddy
        
         private static void CheckKs()
         {
-            foreach (AIHeroClient target in ObjectManager.Get<AIHeroClient>().Where(x => x.IsValidTarget(Q2.Range)).OrderByDescending(GetComboDamage))
+            foreach (AIHeroClient target in EntityManager.Heroes.Enemies.Where(x => x.IsValidTarget(Q2.Range)).OrderByDescending(GetComboDamage))
             {
                 if (target == null)
                 {
