@@ -14,7 +14,7 @@ using EloBuddy.SDK.Menu.Values;
 
 namespace EkkoBuddy
 {
-    
+    using System.Security.Cryptography.X509Certificates;
 
     class Program
     {
@@ -71,6 +71,7 @@ namespace EkkoBuddy
             spell.AddLabel("RMenu");
             spell.Add("R_Safe_Net", new Slider("R If Player Take % dmg > in Past 4 Seconds", 60));
             spell.Add("R_Safe_Net2", new Slider("R If Player HP <= %", 10));
+            spell.Add("R_HitEnemy", new Slider("R if Hit Enemy >= {0}", 3, 2, 5));
             spell.Add("R_On_Killable", new CheckBox("Ult Enemy If they are Killable with combo"));
             spell.Add("R_KS", new CheckBox("Smart R KS"));
 
@@ -130,8 +131,20 @@ namespace EkkoBuddy
             UpdateOldStatus();
             SafetyR();
 
+            if (R.IsReady() && _ekkoPast != null)
+            {
+                    if ((HeroManager.Enemies.Where(x => x.IsValidTarget()).Where(x => Prediction.Position.PredictCircularMissile(x, R.Range, R.Radius, R.CastDelay, R.Speed).UnitPosition.Distance(_ekkoPast.ServerPosition) < 400).ToList().Count >= spell["R_HitEnemy"].Cast<Slider>().CurrentValue))
+                    {
+                        R1.Cast();
+                        return;
+                    }
+            }
+
+            AutoQ();
+
             if (misc["smartKS"].Cast<CheckBox>().CurrentValue)
                 CheckKs();
+            
 
             if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Flee))
             {
@@ -147,7 +160,7 @@ namespace EkkoBuddy
                     Harass();
             }
 
-            AutoQ();
+            
         }
 
         static void Drawing_OnDraw(EventArgs args)
@@ -367,7 +380,7 @@ namespace EkkoBuddy
             {
                 var etarget = TargetSelector.GetTarget(E.Range + 425, DamageType.Magical);
 
-                if (etarget.IsValidTarget(E.Range + 425))
+                if (etarget != null && etarget.IsValidTarget(E.Range + 425))
                 {
                     var vec = Player.ServerPosition.Extend(etarget.ServerPosition, E.Range - 10);
 
@@ -393,14 +406,14 @@ namespace EkkoBuddy
                     Q.Width,
                     Q.CastDelay,
                     Q.Speed,
-                    Q.AllowedCollisionCount);
+                    int.MaxValue);
                 var pred2 = Prediction.Position.PredictLinearMissile(
                     q2Target,
                     Q2.Range,
                     Q2.Width,
                     Q2.CastDelay,
                     Q2.Speed,
-                    Q2.AllowedCollisionCount);
+                    int.MaxValue);
                 if (pred.HitChance >= HitChance.High)
                 {
                     Q.Cast(pred.CastPosition);
