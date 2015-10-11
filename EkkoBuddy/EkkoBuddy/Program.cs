@@ -405,14 +405,14 @@ namespace EkkoBuddy
                     Q.Width,
                     Q.CastDelay,
                     Q.Speed,
-                    int.MaxValue);
+                    Q.AllowedCollisionCount);
                 var pred2 = Prediction.Position.PredictLinearMissile(
                     q2Target,
                     Q2.Range,
                     Q2.Width,
                     Q2.CastDelay,
                     Q2.Speed,
-                    int.MaxValue);
+                    Q2.AllowedCollisionCount);
                 if (pred.HitChance >= HitChance.High)
                 {
                     Q.Cast(pred.CastPosition);
@@ -504,7 +504,7 @@ namespace EkkoBuddy
 
             foreach (var target in HeroManager.Enemies.Where(x => x.IsValidTarget(Q.Range)))
             {
-                if (Q.IsReady() && useQ)
+                if (Q.IsReady() && useQ && target != null)
                     Q.Cast(target);
 
                 if (W.IsReady() && useW)
@@ -566,6 +566,10 @@ namespace EkkoBuddy
         {
             foreach (AIHeroClient target in ObjectManager.Get<AIHeroClient>().Where(x => x.IsValidTarget(Q2.Range)).OrderByDescending(GetComboDamage))
             {
+                if (target == null)
+                {
+                    return;
+                }
                 //Q
                 if (Player.Distance(target) <= Q.Range && Qdmg(target) > target.Health && Q.IsReady())
                 {
