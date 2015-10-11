@@ -154,10 +154,9 @@ namespace EkkoBuddy
             {
                 Combo();
             }
-            else
+            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
             {
-                if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
-                    Harass();
+                Harass();
             }
 
             
@@ -195,7 +194,7 @@ namespace EkkoBuddy
 
         static void Gapcloser_OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
         {
-            if (e.Sender.IsAlly || e.Sender.IsMinion)
+            if (e.Sender.Type != Player.Type || !(W.IsInRange(e.Sender) || E.IsInRange(e.Sender)) || !e.Sender.IsEnemy)
             {
                 return;
             }
@@ -214,7 +213,7 @@ namespace EkkoBuddy
 
         static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
         {
-            if (e.Sender.IsAlly)
+            if (e.Sender.Type != Player.Type || !W.IsInRange(e.Sender) || !e.Sender.IsEnemy)
             {
                 return;
             }
