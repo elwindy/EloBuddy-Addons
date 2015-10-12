@@ -69,6 +69,7 @@ namespace EkkoBuddy
             spell.Add("Do_Not_E_HP", new Slider("Do not E if HP <= %", 20));
             spell.AddSeparator(18);
             spell.AddLabel("RMenu");
+            spell.Add("Disable_R", new CheckBox("Don't Use R", false));
             spell.Add("R_Safe_Net", new Slider("R If Player Take % dmg > in Past 4 Seconds", 60));
             spell.Add("R_Safe_Net2", new Slider("R If Player HP <= %", 10));
             spell.Add("useR_HitEnemy", new CheckBox("use R if Hit Enemy", false));
@@ -134,6 +135,10 @@ namespace EkkoBuddy
 
             if (spell["useR_HitEnemy"].Cast<CheckBox>().CurrentValue && R.IsReady() && _ekkoPast != null)
             {
+                if (spell["Disabled_R"].Cast<CheckBox>().CurrentValue)
+                {
+                    return;
+                }
                     if ((HeroManager.Enemies.Where(x => x.IsValidTarget()).Where(x => Prediction.Position.PredictCircularMissile(x, R.Range, R.Radius, R.CastDelay, R.Speed).UnitPosition.Distance(_ekkoPast.ServerPosition) < 400).ToList().Count >= spell["R_HitEnemy"].Cast<Slider>().CurrentValue))
                     {
                         R1.Cast();
@@ -426,6 +431,11 @@ namespace EkkoBuddy
 
             if (useR && R.IsReady() && _ekkoPast != null)
             {
+                if (spell["Disabled_R"].Cast<CheckBox>().CurrentValue)
+                {
+                    return;
+                }
+
                 if (spell["R_On_Killable"].Cast<CheckBox>().CurrentValue)
                 {
                     if ((from enemie in HeroManager.Enemies.Where(x => x.IsValidTarget()).Where(x => Prediction.Position.PredictCircularMissile(x, R.Range, R.Radius,R.CastDelay,R.Speed).UnitPosition.Distance(_ekkoPast.ServerPosition) < 400)
@@ -519,6 +529,10 @@ namespace EkkoBuddy
         {
             var burstHpAllowed = spell["R_Safe_Net"].Cast<Slider>().CurrentValue;
 
+            if (spell["Disabled_R"].Cast<CheckBox>().CurrentValue)
+            {
+                return;
+            }
             if (_pastStatus.ContainsKey(Environment.TickCount - 3900))
             {
                 float burst = _pastStatus[Environment.TickCount - 3900] - Player.HealthPercent;
@@ -595,6 +609,10 @@ namespace EkkoBuddy
                     return;
                 }
 
+                if (spell["Disabled_R"].Cast<CheckBox>().CurrentValue)
+                {
+                    return;
+                }
                 //R
                 if (R.IsReady() && _ekkoPast != null)
                     if (_ekkoPast.Distance(Prediction.Position.PredictCircularMissile(target, R.Range, R.Radius, R.CastDelay, R.Speed).UnitPosition) <= R.Width && Rdmg(target) > target.Health)
