@@ -71,6 +71,7 @@ namespace EkkoBuddy
             spell.AddLabel("RMenu");
             spell.Add("R_Safe_Net", new Slider("R If Player Take % dmg > in Past 4 Seconds", 60));
             spell.Add("R_Safe_Net2", new Slider("R If Player HP <= %", 10));
+            spell.Add("useR_HitEnemy", new CheckBox("use R if Hit Enemy", false));
             spell.Add("R_HitEnemy", new Slider("R if Hit Enemy >= {0}", 3, 2, 5));
             spell.Add("R_On_Killable", new CheckBox("Ult Enemy If they are Killable with combo"));
             spell.Add("R_KS", new CheckBox("Smart R KS"));
@@ -131,7 +132,7 @@ namespace EkkoBuddy
             UpdateOldStatus();
             SafetyR();
 
-            if (R.IsReady() && _ekkoPast != null)
+            if (spell["useR_HitEnemy"].Cast<CheckBox>().CurrentValue && R.IsReady() && _ekkoPast != null)
             {
                     if ((HeroManager.Enemies.Where(x => x.IsValidTarget()).Where(x => Prediction.Position.PredictCircularMissile(x, R.Range, R.Radius, R.CastDelay, R.Speed).UnitPosition.Distance(_ekkoPast.ServerPosition) < 400).ToList().Count >= spell["R_HitEnemy"].Cast<Slider>().CurrentValue))
                     {
