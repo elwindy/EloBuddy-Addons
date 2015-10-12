@@ -118,149 +118,14 @@ namespace EkkoBuddy
             Game.OnUpdate += Game_OnUpdate;
         }
 
-        static void Game_OnUpdate(EventArgs args)
-        {
-            //check if player is dead
-            if (Player.IsDead) return;
-
-
-            if (_ekkoPast == null && R.IsReady())
-                _ekkoPast = ObjectManager.Get<Obj_AI_Base>().FirstOrDefault(x => x.Name == "Ekko" && x.IsAlly);
-
-            UpdateOldStatus();
-            SafetyR();
-
-            
-            
-
-            if (misc["smartKS"].Cast<CheckBox>().CurrentValue)
-                CheckKs();
-
-
-            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo))
-            {
-                Combo();
-            }
-            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
-            {
-                Harass();
-            }
-            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Flee))
-            {
-                Flee();
-            }
-
-            AutoQ();
-
-            
-        }
-
-        static void Drawing_OnDraw(EventArgs args)
-        {
-            if (drawing["Draw_Disabled"].Cast<CheckBox>().CurrentValue)
-                return;
-
-            if (drawing["Draw_Q"].Cast<CheckBox>().CurrentValue)
-                if (Q.Level > 0)
-                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(Q.IsReady() ? Color.Green.ToArgb() : Color.Red.ToArgb()), Q.Range, Player.Position);
-
-            if (drawing["Draw_W"].Cast<CheckBox>().CurrentValue)
-                if (W.Level > 0)
-                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(W.IsReady() ? Color.Green.ToArgb() : Color.Red.ToArgb()), W.Range, Player.Position);
-
-            if (drawing["Draw_E"].Cast<CheckBox>().CurrentValue)
-                if (E.Level > 0)
-                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(E.IsReady() ? Color.Green.ToArgb() : Color.Red.ToArgb()), E.Range, Player.Position);
-
-            if (drawing["Draw_R"].Cast<CheckBox>().CurrentValue)
-                if (R.Level > 0 && _ekkoPast != null)
-                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(R.IsReady() ? Color.RoyalBlue.ToArgb() : Color.RoyalBlue.ToArgb()), R.Width, _ekkoPast.Position);
-
-            
-            if (R.IsReady() && _ekkoPast != null)
-            {
-                Vector2 wts = Drawing.WorldToScreen(Player.Position);
-                Drawing.DrawText(wts[0] - 20, wts[1], Color.White, "Enemies Hit with R: " + TargetHitWithR());
-            }
-            
-        }
-
-        static void Gapcloser_OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
-        {
-            if (e.Sender.Type != Player.Type || !(W.IsInRange(e.Sender) || E.IsInRange(e.Sender)) || !e.Sender.IsEnemy)
-            {
-                return;
-            }
-            if (misc["UseGapQ"].Cast<CheckBox>().CurrentValue)
-            {
-                if (Q.IsReady() && e.Sender.IsValidTarget(Q.Range))
-                    Q.Cast(e.Sender);
-            }
-
-            if (misc["UseGapW"].Cast<CheckBox>().CurrentValue)
-            {
-                if (W.IsReady() && e.Sender.IsValidTarget(W.Range))
-                    W.Cast(e.Sender);
-            }
-        }
-
-        static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
-        {
-            if (e.Sender.Type != Player.Type || !W.IsInRange(e.Sender) || !e.Sender.IsEnemy)
-            {
-                return;
-            }
-            if (!spell["UseInt"].Cast<CheckBox>().CurrentValue) return;
-
-            if (Player.Distance(sender.Position) < W.Range && W.IsReady())
-            {
-                W.Cast(sender);
-            }
-        }
-
-        static void GameObject_OnDelete(GameObject sender, EventArgs args)
-        {
-            if (!(sender is Obj_AI_Base) || !sender.IsAlly)
-                return;
-
-            if (sender.IsAlly && sender.Name == "Ekko")
-            {
-                _ekkoPast = null;
-            }
-        }
-
-        static void GameObject_OnCreate(GameObject sender, EventArgs args)
-        {
-            if (!(sender is Obj_AI_Base) || !sender.IsAlly)
-                return;
-
-            if (sender.Name == "Ekko")
-            {
-                _ekkoPast = (Obj_AI_Base)sender;
-            }
-        }
-
-        static void AIHeroClient_OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
-        {
-            if (!sender.IsMe || !R.IsReady() || args.Damage > 45)
-                return;
-
-            var safeNet = spell["R_Safe_Net2"].Cast<Slider>().CurrentValue;
-
-            if (Player.HealthPercent <= safeNet)
-            {
-                R1.Cast();
-            }
-        }
-
-        private static double PassiveDmg(Obj_AI_Base target)
+        static double PassiveDmg(Obj_AI_Base target)
         {
 
             return Player.CalculateDamageOnUnit(target, DamageType.Magical,
                 15 + (12 * Player.Level) + Player.TotalMagicalDamage * .7f);
         }
 
-        private static double TotalQDmg(Obj_AI_Base target)
+        static double TotalQDmg(Obj_AI_Base target)
         {
             if (Q.Level < 1)
                 return 0;
@@ -268,7 +133,7 @@ namespace EkkoBuddy
             return Qdmg(target) + Q2Dmg(target);
         }
 
-        private static double Qdmg(Obj_AI_Base target)
+        static double Qdmg(Obj_AI_Base target)
         {
             if (Q.Level < 1)
                 return 0;
@@ -277,7 +142,7 @@ namespace EkkoBuddy
                 (float)(new double[] { 60, 75, 90, 105, 120 }[Q.Level - 1] + Player.TotalMagicalDamage * .2f));
         }
 
-        private static double Q2Dmg(Obj_AI_Base target)
+        static double Q2Dmg(Obj_AI_Base target)
         {
             if (Q.Level < 1)
                 return 0;
@@ -286,7 +151,7 @@ namespace EkkoBuddy
                 (float)(new double[] { 60, 85, 110, 135, 160 }[Q.Level - 1] + Player.TotalMagicalDamage * .6f));
         }
 
-        private static double Edmg(Obj_AI_Base target)
+        static double Edmg(Obj_AI_Base target)
         {
             if (E.Level < 1)
                 return 0;
@@ -296,7 +161,7 @@ namespace EkkoBuddy
         }
 
 
-        private static double Rdmg(Obj_AI_Base target)
+        static double Rdmg(Obj_AI_Base target)
         {
             if (R.Level < 1)
                 return 0;
@@ -305,7 +170,7 @@ namespace EkkoBuddy
                 (float)(new double[] { 200, 350, 500 }[R.Level - 1] + Player.TotalMagicalDamage * 1.3f));
         }
 
-        private static float GetComboDamage(Obj_AI_Base target)
+        static float GetComboDamage(Obj_AI_Base target)
         {
             double comboDamage = 0;
 
@@ -322,26 +187,25 @@ namespace EkkoBuddy
 
             return (float)(comboDamage + Player.GetAutoAttackDamage(target) * 2);
         }
-
-        private static void Combo()
+        static void Combo()
         {
             UseSpells(combo["UseQCombo"].Cast<CheckBox>().CurrentValue, combo["UseWCombo"].Cast<CheckBox>().CurrentValue,
                 combo["UseECombo"].Cast<CheckBox>().CurrentValue, combo["UseRCombo"].Cast<CheckBox>().CurrentValue, "Combo");
         }
 
-        private static void Harass()
+        static void Harass()
         {
             UseSpells(harass["UseQHarass"].Cast<CheckBox>().CurrentValue, harass["UseWHarass"].Cast<CheckBox>().CurrentValue,
                 harass["UseEHarass"].Cast<CheckBox>().CurrentValue, false, "Harass");
         }
 
-        private static void UseSpells(bool useQ, bool useW, bool useE, bool useR, string source)
+        static void UseSpells(bool useQ, bool useW, bool useE, bool useR, string source)
         {
             if (source == "Harass" && Player.ManaPercent <= harass["Harass"].Cast<Slider>().CurrentValue)
                 return;
 
             var target = TargetSelector.GetTarget(Q.Range, DamageType.Physical);
-            if (!target.IsValidTarget(Q.Range))
+            if (!target.IsValidTarget(Q.Range) && target == null)
                 return;
 
             if (useW && W.IsReady())
@@ -352,7 +216,7 @@ namespace EkkoBuddy
 
                 if (spell["W_On_Cc"].Cast<CheckBox>().CurrentValue)
                 {
-                    foreach (var enemies in HeroManager.Enemies.Where(x => x.IsValidTarget(W.Range)))
+                    foreach (var enemies in EntityManager.Heroes.Enemies.Where(x => x.IsValidTarget(W.Range)))
                     {
                         if (enemies.HasBuffOfType(BuffType.Snare) || enemies.HasBuffOfType(BuffType.Stun) || enemies.HasBuffOfType(BuffType.Fear) || enemies.HasBuffOfType(BuffType.Suppression))
                         {
@@ -389,7 +253,7 @@ namespace EkkoBuddy
                 var qTarget = TargetSelector.GetTarget(Q.Range, DamageType.Magical);
                 var q2Target = TargetSelector.GetTarget(Q2.Range, DamageType.Magical);
 
-                if(qTarget == null || q2Target == null)
+                if (qTarget == null || q2Target == null)
                     return;
 
                 var pred = Prediction.Position.PredictLinearMissile(
@@ -418,10 +282,10 @@ namespace EkkoBuddy
 
             if (useR && R.IsReady() && _ekkoPast != null)
             {
-               
+
                 if (spell["R_On_Killable"].Cast<CheckBox>().CurrentValue)
                 {
-                    if ((from enemie in HeroManager.Enemies.Where(x => x.IsValidTarget()).Where(x => Prediction.Position.PredictCircularMissile(x, R.Range, R.Radius,R.CastDelay,R.Speed).UnitPosition.Distance(_ekkoPast.ServerPosition) < 400)
+                    if ((from enemie in EntityManager.Heroes.Enemies.Where(x => x.IsValidTarget()).Where(x => Prediction.Position.PredictCircularMissile(x, R.Range, R.Radius, R.CastDelay, R.Speed).UnitPosition.Distance(_ekkoPast.ServerPosition) < 400)
                          let dmg = GetComboDamage(enemie)
                          where dmg > enemie.Health
                          select enemie).Any())
@@ -434,42 +298,11 @@ namespace EkkoBuddy
             }
         }
 
-        public static bool UnderTurret(Vector3 position, bool enemyTurretsOnly)
-        {
-            return
-                ObjectManager.Get<Obj_AI_Turret>().Any(turret => IsValidTarget(turret, 950, enemyTurretsOnly, position));
-        }
-
-        public static bool IsValidTarget(AttackableUnit unit,
-            float range = float.MaxValue,
-            bool checkTeam = true,
-            Vector3 from = new Vector3())
-        {
-            if (unit == null || !unit.IsValid || unit.IsDead || !unit.IsVisible || !unit.IsTargetable ||
-                unit.IsInvulnerable)
-            {
-                return false;
-            }
-
-            if (checkTeam && unit.Team == ObjectManager.Player.Team)
-            {
-                return false;
-            }
-
-            var @base = unit as Obj_AI_Base;
-            var unitPosition = @base != null ? @base.ServerPosition : unit.Position;
-
-            return !(range < float.MaxValue) ||
-                   !(Vector2.DistanceSquared(
-                       (@from.To2D().IsValid() ? @from : ObjectManager.Player.ServerPosition).To2D(),
-                       unitPosition.To2D()) > range * range);
-        }
-
-        private static bool ShouldE(Vector3 vec)
+        static bool ShouldE(Vector3 vec)
         {
             var maxEnemies = spell["Do_Not_E"].Cast<Slider>().CurrentValue;
 
-            if (!spell["E_If_UnderTurret"].Cast<KeyBind>().CurrentValue && UnderTurret(vec,true))
+            if (!spell["E_If_UnderTurret"].Cast<KeyBind>().CurrentValue && UnderTurret(vec, true))
                 return false;
 
             if (Player.HealthPercent <= spell["Do_Not_E_HP"].Cast<Slider>().CurrentValue)
@@ -480,8 +313,7 @@ namespace EkkoBuddy
 
             return true;
         }
-
-        private static void Flee()
+        static void Flee()
         {
             var useQ = flee["UseQFlee"].Cast<CheckBox>().CurrentValue;
             var useW = flee["UseWFlee"].Cast<CheckBox>().CurrentValue;
@@ -508,11 +340,11 @@ namespace EkkoBuddy
             }
         }
 
-        private static void SafetyR()
+        static void SafetyR()
         {
             var burstHpAllowed = spell["R_Safe_Net"].Cast<Slider>().CurrentValue;
 
-            
+
             if (_pastStatus.ContainsKey(Environment.TickCount - 3900))
             {
                 float burst = _pastStatus[Environment.TickCount - 3900] - Player.HealthPercent;
@@ -524,7 +356,7 @@ namespace EkkoBuddy
             }
         }
 
-        private static int TargetHitWithR()
+        static int TargetHitWithR()
         {
             if (!R.IsReady() || _ekkoPast == null)
                 return 0;
@@ -532,7 +364,7 @@ namespace EkkoBuddy
             return HeroManager.Enemies.Where(x => x.IsValidTarget()).Count(x => _ekkoPast.Distance(Prediction.Position.PredictCircularMissile(x, R.Range, R.Radius, R.CastDelay, R.Speed).UnitPosition) < 400);
         }
 
-        private static void AutoQ()
+        static void AutoQ()
         {
             var target = TargetSelector.GetTarget(Q.Range, DamageType.Physical);
 
@@ -556,8 +388,8 @@ namespace EkkoBuddy
                 }
             }
         }
-       
-        private static void CheckKs()
+
+        static void CheckKs()
         {
             foreach (AIHeroClient target in EntityManager.Heroes.Enemies.Where(x => x.IsValidTarget(Q2.Range)).OrderByDescending(GetComboDamage))
             {
@@ -589,7 +421,7 @@ namespace EkkoBuddy
                     return;
                 }
 
-                
+
                 //R
                 if (R.IsReady() && _ekkoPast != null)
                     if (_ekkoPast.Distance(Prediction.Position.PredictCircularMissile(target, R.Range, R.Radius, R.CastDelay, R.Speed).UnitPosition) <= R.Width && Rdmg(target) > target.Health)
@@ -600,7 +432,7 @@ namespace EkkoBuddy
             }
         }
 
-        private static void UpdateOldStatus()
+        static void UpdateOldStatus()
         {
             if (_pastStatus.Keys.ToList().All(x => x != Environment.TickCount))
             {
@@ -613,6 +445,169 @@ namespace EkkoBuddy
             }
         }
 
+        protected static void AIHeroClient_OnDamage(AttackableUnit sender, AttackableUnitDamageEventArgs args)
+        {
+            if (!sender.IsMe || !R.IsReady() || args.Damage > 45)
+                return;
 
+            var safeNet = spell["R_Safe_Net2"].Cast<Slider>().CurrentValue;
+
+            if (Player.HealthPercent <= safeNet)
+            {
+                R1.Cast();
+            }
+        }
+
+        protected static void Game_OnUpdate(EventArgs args)
+        {
+            //check if player is dead
+            if (Player.IsDead)
+            {
+                return;
+            }
+
+            if (_ekkoPast == null && R.IsReady())
+            {
+                _ekkoPast = ObjectManager.Get<Obj_AI_Base>().FirstOrDefault(x => x.Name == "Ekko" && x.IsAlly);
+            }
+            UpdateOldStatus();
+            SafetyR();
+
+            if (misc["smartKS"].Cast<CheckBox>().CurrentValue)
+            {
+                CheckKs();
+            }
+            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Flee))
+            {
+                Flee();
+            }
+
+            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo))
+            {
+                Combo();
+            }
+            else
+            {
+                if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
+                {
+                    Harass();
+                }
+
+            }
+            AutoQ();
+        }
+
+        protected static void GameObject_OnCreate(GameObject sender, EventArgs args)
+        {
+            if (!(sender is Obj_AI_Base) || !sender.IsAlly)
+                return;
+
+            if (sender.Name == "Ekko")
+            {
+                _ekkoPast = (Obj_AI_Base)sender;
+            }
+        }
+
+        protected static void GameObject_OnDelete(GameObject sender, EventArgs args)
+        {
+            if (!(sender is Obj_AI_Base) || !sender.IsAlly)
+                return;
+
+            if (sender.IsAlly && sender.Name == "Ekko")
+            {
+                _ekkoPast = null;
+            }
+        }
+        protected static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
+        {
+            if (e.Sender.Type != Player.Type || !W.IsInRange(e.Sender) || !e.Sender.IsEnemy)
+            {
+                return;
+            }
+            if (!spell["UseInt"].Cast<CheckBox>().CurrentValue) return;
+
+            if (Player.Distance(sender.Position) < W.Range && W.IsReady())
+            {
+                W.Cast(sender);
+            }
+        }
+        protected static void Gapcloser_OnGapcloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
+        {
+            if (e.Sender.Type != Player.Type || !(W.IsInRange(e.Sender) || E.IsInRange(e.Sender)) || !e.Sender.IsEnemy)
+            {
+                return;
+            }
+            if (misc["UseGapQ"].Cast<CheckBox>().CurrentValue)
+            {
+                if (Q.IsReady() && e.Sender.IsValidTarget(Q.Range))
+                    Q.Cast(e.Sender);
+            }
+
+            if (misc["UseGapW"].Cast<CheckBox>().CurrentValue)
+            {
+                if (W.IsReady() && e.Sender.IsValidTarget(W.Range))
+                    W.Cast(e.Sender);
+            }
+        }
+
+        protected static void Drawing_OnDraw(EventArgs args)
+        {
+            if (drawing["Draw_Disabled"].Cast<CheckBox>().CurrentValue)
+                return;
+
+            if (drawing["Draw_Q"].Cast<CheckBox>().CurrentValue)
+                if (Q.Level > 0)
+                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(Q.IsReady() ? Color.Green.ToArgb() : Color.Red.ToArgb()), Q.Range, Player.Position);
+
+            if (drawing["Draw_W"].Cast<CheckBox>().CurrentValue)
+                if (W.Level > 0)
+                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(W.IsReady() ? Color.Green.ToArgb() : Color.Red.ToArgb()), W.Range, Player.Position);
+
+            if (drawing["Draw_E"].Cast<CheckBox>().CurrentValue)
+                if (E.Level > 0)
+                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(E.IsReady() ? Color.Green.ToArgb() : Color.Red.ToArgb()), E.Range, Player.Position);
+
+            if (drawing["Draw_R"].Cast<CheckBox>().CurrentValue)
+                if (R.Level > 0 && _ekkoPast != null)
+                    EloBuddy.SDK.Rendering.Circle.Draw(new ColorBGRA(R.IsReady() ? Color.RoyalBlue.ToArgb() : Color.RoyalBlue.ToArgb()), R.Width, _ekkoPast.Position);
+
+            
+            if (R.IsReady() && _ekkoPast != null)
+            {
+                Vector2 wts = Drawing.WorldToScreen(Player.Position);
+                Drawing.DrawText(wts[0] - 20, wts[1], Color.White, "Enemies Hit with R: " + TargetHitWithR());
+            }
+            
+        }
+        protected static bool UnderTurret(Vector3 position, bool enemyTurretsOnly)
+        {
+            return
+                ObjectManager.Get<Obj_AI_Turret>().Any(turret => IsValidTarget(turret, 950, enemyTurretsOnly, position));
+        }
+
+        protected static bool IsValidTarget(AttackableUnit unit,
+            float range = float.MaxValue,
+            bool checkTeam = true,
+            Vector3 from = new Vector3())
+        {
+            if (unit == null || !unit.IsValid || unit.IsDead || !unit.IsVisible || !unit.IsTargetable ||
+                unit.IsInvulnerable)
+            {
+                return false;
+            }
+
+            if (checkTeam && unit.Team == ObjectManager.Player.Team)
+            {
+                return false;
+            }
+
+            var @base = unit as Obj_AI_Base;
+            var unitPosition = @base != null ? @base.ServerPosition : unit.Position;
+
+            return !(range < float.MaxValue) ||
+                   !(Vector2.DistanceSquared(
+                       (@from.To2D().IsValid() ? @from : ObjectManager.Player.ServerPosition).To2D(),
+                       unitPosition.To2D()) > range * range);
+        }
     }
 }
