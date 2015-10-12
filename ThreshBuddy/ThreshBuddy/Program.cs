@@ -199,7 +199,7 @@ namespace ThreshBuddy
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
         private static void Gapcloser_OnGapCloser(AIHeroClient sender, Gapcloser.GapcloserEventArgs e)
         {
-            if (!e.Sender.IsValidTarget() || !flayMenu["EGapcloser"].Cast<CheckBox>().CurrentValue || sender.IsAlly)
+            if (!e.Sender.IsValidTarget() || !flayMenu["EGapcloser"].Cast<CheckBox>().CurrentValue || e.Sender.Type != Player.Type || !e.Sender.IsEnemy)
             {
                 return;
             }
@@ -219,7 +219,7 @@ namespace ThreshBuddy
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
         private static void Interrupter_OnInterruptableSpell(Obj_AI_Base sender, Interrupter.InterruptableSpellEventArgs e)
         {
-            if (!sender.IsValidTarget(Q.Range) || e.DangerLevel != DangerLevel.High || sender.IsAlly)
+            if (!sender.IsValidTarget(Q.Range) || e.DangerLevel != DangerLevel.High || e.Sender.Type != Player.Type || !e.Sender.IsEnemy)
             {
                 return;
             }
@@ -251,7 +251,7 @@ namespace ThreshBuddy
             }
 
             var autoQTarget =
-                HeroManager.Enemies.FirstOrDefault(
+                EntityManager.Heroes.Enemies.FirstOrDefault(
                     x =>
                     x.HasBuffOfType(BuffType.Charm) || x.HasBuffOfType(BuffType.Knockup)
                     || x.HasBuffOfType(BuffType.Stun) || x.HasBuffOfType(BuffType.Suppression)
@@ -263,7 +263,13 @@ namespace ThreshBuddy
                     Q.Width,
                     Q.CastDelay,
                     Q.Speed,
-                    int.MaxValue).HitChance >= HitChance.High)
+                    int.MaxValue).HitChance >= HitChance.High && !Prediction.Position.PredictLinearMissile(
+                    autoQTarget,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).CollisionObjects.Any())
             {
                 Q.Cast(autoQTarget);
             }
@@ -280,9 +286,8 @@ namespace ThreshBuddy
             if (lanternLowAllies)
             {
                 var ally =
-                    HeroManager.Allies.Where(
-                        x => x.IsValidTarget(W.Range) && x.HealthPercent < lanternHealthPercent)
-                        .FirstOrDefault();
+                    EntityManager.Heroes.Allies
+                        .FirstOrDefault(x => x.IsValidTarget(W.Range) && x.HealthPercent <= lanternHealthPercent);
 
                 if (ally != null && ally.CountEnemiesInRange(700) >= 1)
                 {
@@ -303,7 +308,7 @@ namespace ThreshBuddy
         [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "Reviewed. Suppression is OK here.")]
         private static void Obj_AI_Base_OnNewPath(Obj_AI_Base sender, GameObjectNewPathEventArgs args)
         {
-            if (!sender.IsValid() || !args.IsDash || !sender.IsValidTarget(Q.Range) || sender.IsAlly || !sender.IsMinion)
+            if (!sender.IsValid() || !args.IsDash || !sender.IsValidTarget(Q.Range) || sender.Type != Player.Type || !sender.IsEnemy)
             {
                 return;
             }
@@ -318,7 +323,13 @@ namespace ThreshBuddy
                     Q.CastDelay,
                     Q.Speed,
                     int.MaxValue,
-                    endPosition).HitChance != HitChance.High)
+                    endPosition).HitChance < HitChance.High && Prediction.Position.PredictLinearMissile(
+                    sender,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).CollisionObjects.Any())
                 {
                     return;
                 }
@@ -334,7 +345,7 @@ namespace ThreshBuddy
 
                 var prediction = E.GetPrediction(sender);
 
-                if (prediction.HitChance != HitChance.High)
+                if (prediction.HitChance < HitChance.High)
                 {
                     return;
                 }
@@ -362,12 +373,11 @@ namespace ThreshBuddy
         /// </param>
         private static void Game_OnTick(EventArgs args)
         {
-            Orbwalker.ForcedTarget = null;
             if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Combo))
             {
                 Combo();
             }
-            else if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
+            if (Orbwalker.ActiveModesFlags.HasFlag(Orbwalker.ActiveModes.Harass))
             {
                 Harass();
             }
@@ -378,19 +388,23 @@ namespace ThreshBuddy
             {
                 var target = TargetSelector.GetTarget(E.Range, DamageType.Physical);
                 if (target != null)
-                Push(target);
+                {
+                    Push(target);
+                }
             }
             if (pull_push["pull"].Cast<KeyBind>().CurrentValue)
             {
                 var target = TargetSelector.GetTarget(E.Range, DamageType.Physical);
                 if (target != null)
-                Pull(target);
+                {
+                    Pull(target);
+                }
             }
         }
 
         private static void Pull(AIHeroClient target)
         {
-            if (Player.Distance(target) <= E.Range)
+            if (target != null && Player.Distance(target) <= E.Range)
             {
                 var pX = Player.Position.X + (Player.Position.X - target.Position.X);
                 var pY = Player.Position.Y + (Player.Position.Y - target.Position.Y);
@@ -401,7 +415,7 @@ namespace ThreshBuddy
 
         private static void Push(AIHeroClient target)
         {
-            if (Player.Distance(target) <= E.Range)
+            if (target != null && Player.Distance(target) <= E.Range)
             {
                 E.Cast(target.ServerPosition);
             }
@@ -431,7 +445,13 @@ namespace ThreshBuddy
                     Q.Width,
                     Q.CastDelay,
                     Q.Speed,
-                    int.MaxValue).HitChance >= HitChance.High)
+                    int.MaxValue).HitChance >= HitChance.High && !Prediction.Position.PredictLinearMissile(
+                    target,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).CollisionObjects.Any())
                 {
                     Q.Cast(target);
                 }
@@ -447,7 +467,7 @@ namespace ThreshBuddy
                 var isFleeing = Player.Distance(target) < target.Distance(Game.CursorPos);
                 var prediction = E.GetPrediction(target);
 
-                if (prediction.HitChance != HitChance.High)
+                if (prediction.HitChance < HitChance.High)
                 {
                     return;
                 }
@@ -474,7 +494,7 @@ namespace ThreshBuddy
         {
             var target = TargetSelector.GetTarget(Q.Range, DamageType.Physical);
 
-            if (!target.IsValidTarget())
+            if (!target.IsValidTarget(Q.Range) || target == null)
             {
                 return;
             }
@@ -496,7 +516,13 @@ namespace ThreshBuddy
                     Q.Width,
                     Q.CastDelay,
                     Q.Speed,
-                    int.MaxValue).HitChance >= HitChance.High)
+                    int.MaxValue).HitChance >= HitChance.High && !Prediction.Position.PredictLinearMissile(
+                    target,
+                    Q.Range,
+                    Q.Width,
+                    Q.CastDelay,
+                    Q.Speed,
+                    int.MaxValue).CollisionObjects.Any())
                 {
                     Q.Cast(target);
                 }
@@ -505,14 +531,14 @@ namespace ThreshBuddy
             if (useW && W.IsReady() && target.HasBuff("ThreshQ"))
             {
                 var ally =
-                    HeroManager.Allies.Where(x => !x.IsMe && x.IsValidTarget(W.Range) && x.Distance(Player) > 300)
-                        .FirstOrDefault();
+                    EntityManager.Heroes.Allies
+                        .FirstOrDefault(x => !x.IsMe && x.IsValidTarget(W.Range) && x.Distance(Player) > 300);
 
                 if (ally != null)
                 {
                     W.Cast(W.GetPrediction(ally).CastPosition);
                 }
-                else if (Player.HealthPercent < 50)
+                if (Player.HealthPercent < 50)
                 {
                     W.Cast(W.GetPrediction(Player).CastPosition);
                 }
@@ -523,7 +549,7 @@ namespace ThreshBuddy
                 var isFleeing = Player.Distance(target) < target.Distance(Game.CursorPos);
                 var prediction = E.GetPrediction(target);
 
-                if (prediction.HitChance == HitChance.High)
+                if (prediction.HitChance >= HitChance.High)
                 {
                     var x = Player.ServerPosition.X - target.ServerPosition.X;
                     var y = Player.ServerPosition.Y - target.ServerPosition.Y;
